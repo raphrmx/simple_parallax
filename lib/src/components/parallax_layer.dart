@@ -2,13 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_parallax/src/common/scroll_notifier.dart';
 
+/// Parallax layer for background image
 class ParallaxLayer extends StatelessWidget {
+  /// Background image path
   final String imagePath;
+
+  /// Parallax speed setting
   final double speed;
+
+  /// Image base position
   final double decal;
+
+  /// Background layer width
   final double? width;
+
+  /// Background layer height
   final double? height;
 
+  /// Layer constructor
   const ParallaxLayer({
     super.key,
     required this.imagePath,

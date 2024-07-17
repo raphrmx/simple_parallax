@@ -11,7 +11,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-
   static const itemHeight = 100.0;
   static const itemMargin = 10.0;
   static const numberItems = 20;
@@ -22,7 +21,8 @@ class _MyAppState extends State<MyApp> {
   double _columnHeight = 1;
 
   void _calculateHeight() {
-    final RenderBox renderBox = _columnKey.currentContext!.findRenderObject() as RenderBox;
+    final RenderBox renderBox =
+        _columnKey.currentContext!.findRenderObject() as RenderBox;
     setState(() {
       _columnHeight = renderBox.size.height;
     });

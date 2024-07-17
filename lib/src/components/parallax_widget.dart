@@ -3,12 +3,21 @@ import 'package:provider/provider.dart';
 import 'package:simple_parallax/src/common/scroll_notifier.dart';
 import 'package:simple_parallax/src/components/parallax_layer.dart';
 
+/// SimpleParallax widget
 class ParallaxWidget extends StatelessWidget {
+  /// Background image path
   final String imagePath;
+
+  /// Parallax content
   final Widget child;
+
+  /// Parallax speed setting
   final double speed;
+
+  /// Image base position
   final double decal;
 
+  /// Simple parallax constructor
   const ParallaxWidget({
     super.key,
     required this.imagePath,
@@ -30,7 +39,7 @@ class ParallaxWidget extends StatelessWidget {
             onNotification: (scrollNotification) {
               if (scrollNotification is ScrollUpdateNotification) {
                 final scrollPixels = scrollNotification.metrics.pixels;
-                double offset = scrollPixels * speed;
+                final offset = scrollPixels * speed;
                 Provider.of<ScrollNotifier>(context, listen: false)
                     .setScrollOffset(offset);
               }

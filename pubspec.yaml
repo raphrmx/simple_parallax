@@ -1,13 +1,13 @@
 name: simple_parallax
 description: "This Flutter plugin provides a simple and customizable parallax effect for your applications."
-version: 0.0.1
+version: 0.0.2
 homepage: https://www.comapps.be
 repository: https://github.com/raphrmx/simple_parallax
 issue_tracker: https://github.com/raphrmx/simple_parallax/issues
 
 environment:
-  sdk: '>=2.17.0 <4.0.0'
-  flutter: '>=3.0.0'
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.22.0'
 
 dependencies:
   flutter:
@@ -20,7 +20,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   plugin:

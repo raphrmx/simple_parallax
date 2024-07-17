@@ -53,15 +53,15 @@ class MyApp extends StatelessWidget {
 ## Tip to avoid background image overflow
 Calculate best parallax speed
 ```dart
-// Use a Statefull widget
+/// Use a Statefull widget
 class _MyAppState extends State<MyApp> {
   double _contentHeight = 1;
-  // We use a GlobalKey to get a reference to the content widget.
+  /// We use a GlobalKey to get a reference to the content widget.
   final _contentKey = GlobalKey();
   
   void _calculateHeight() {
-    // This method uses the GlobalKey to get the size of the content after rendering. 
-    // RenderBox is used to access the dimensions of the widget.
+    /// This method uses the GlobalKey to get the size of the content after rendering. 
+    /// RenderBox is used to access the dimensions of the widget.
     final RenderBox renderBox = _columnKey.currentContext!.findRenderObject() as RenderBox;
     setState(() {
       _contentHeight = renderBox.size.height;
@@ -71,8 +71,8 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // We add a postFrameCallback in initState to calculate the height of
-    // the content after the widget has been rendered.
+    /// We add a postFrameCallback in initState to calculate the height of
+    /// the content after the widget has been rendered.
     WidgetsBinding.instance.addPostFrameCallback((_) => _calculateHeight());
   }
 
