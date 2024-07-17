@@ -1,0 +1,38 @@
+name: simple_parallax
+description: "A new Flutter plugin project."
+version: 0.0.1
+
+environment:
+  sdk: '>=2.17.0 <4.0.0'
+  flutter: '>=3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  web: ^1.0.0
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.example.simple_parallax
+        pluginClass: SimpleParallaxPlugin
+      ios:
+        pluginClass: SimpleParallaxPlugin
+      linux:
+        pluginClass: SimpleParallaxPlugin
+      macos:
+        pluginClass: SimpleParallaxPlugin
+      windows:
+        pluginClass: SimpleParallaxPluginCApi
+      web:
+        pluginClass: SimpleParallaxWeb
+        fileName: simple_parallax_web.dart
