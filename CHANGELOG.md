@@ -1,5 +1,9 @@
 # SimpleParallax Versions
 
+## 0.1.1
+
+* Improved README.md
+
 ## 0.1.0
 
 * Add parallax mods container and widget.
