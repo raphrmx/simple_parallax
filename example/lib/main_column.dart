@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
             const SimpleParallaxItem(
-              imagePath: 'assets/images/background.jpg',
+              imagePath: 'assets/images/background.webp',
               height: 300,
               child: Center(
                 child: Text('TEST 1'),
@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
             const SimpleParallaxItem(
-              imagePath: 'assets/images/background.jpg',
+              imagePath: 'assets/images/background.webp',
               height: 300,
               child: Center(
                 child: Text('TEST 2'),

@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
             //width: 600,
             child: SimpleParallaxContainer(
               //height: 300,
-              imagePath: 'assets/images/background.jpg',
+              imagePath: 'assets/images/background.webp',
               speed: 0.3,
               autoSpeed: true,
               decal: 1.0,
