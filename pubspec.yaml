@@ -1,6 +1,6 @@
 name: simple_parallax
-description: "This Flutter plugin provides a simple and customizable parallax effect for your applications."
-version: 0.1.0
+description: "This parallax Flutter plugin that adds elegant parallax effects to your widgets using two different modes: a container mode and a widget mode. This plugin helps create dynamic and visually appealing user interfaces with scrolling effects."
+version: 0.1.1
 homepage: https://www.comapps.be
 repository: https://github.com/raphrmx/simple_parallax
 issue_tracker: https://github.com/raphrmx/simple_parallax/issues
