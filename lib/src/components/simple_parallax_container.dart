@@ -35,17 +35,20 @@ class SimpleParallaxContainer extends StatefulWidget {
   final double? height;
 
   @override
-  State<SimpleParallaxContainer> createState() => _SimpleParallaxContainerState();
+  State<SimpleParallaxContainer> createState() =>
+      _SimpleParallaxContainerState();
 }
 
 class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
   double _speed = 0.3;
   void _calculateSpeed() {
-    final RenderBox? renderBox =
-      (widget.child.key as GlobalKey?)?.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? renderBox = (widget.child.key as GlobalKey?)
+        ?.currentContext
+        ?.findRenderObject() as RenderBox?;
     if (renderBox != null) {
       setState(() {
-        _speed = (widget.height ?? MediaQuery.of(context).size.height) / renderBox.size.height;
+        _speed = (widget.height ?? MediaQuery.of(context).size.height) /
+            renderBox.size.height;
       });
     }
   }
@@ -55,6 +58,7 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
     super.initState();
     _speed = widget.speed;
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();

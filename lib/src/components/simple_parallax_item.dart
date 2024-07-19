@@ -56,12 +56,14 @@ class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
   }
 
   void _calculatePosition() {
-    final RenderBox renderBox = _key.currentContext!.findRenderObject()! as RenderBox;
+    final RenderBox renderBox =
+        _key.currentContext!.findRenderObject()! as RenderBox;
     final Offset offset = renderBox.localToGlobal(Offset.zero);
     EdgeInsets padding = EdgeInsets.zero; // Default if no padding is used
 
     // Calculating the offset including padding
-    final Padding? container = _key.currentContext!.findAncestorWidgetOfExactType<Padding>();
+    final Padding? container =
+        _key.currentContext!.findAncestorWidgetOfExactType<Padding>();
     if (container != null) {
       final Padding paddingWidget = container;
       final EdgeInsetsGeometry paddingEdge = paddingWidget.padding;
@@ -71,12 +73,14 @@ class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
     }
 
     final double offsetY = offset.dy - padding.top;
-    final double scrollOffset = Provider.of<ParallaxNotifier>(context, listen: false).scrollOffset;
+    final double scrollOffset =
+        Provider.of<ParallaxNotifier>(context, listen: false).scrollOffset;
     _parallaxRowNotifier.updatePosition(offsetY - scrollOffset);
   }
 
   double _getTranslateValue(BuildContext context) {
-    final double scrollOffset = Provider.of<ParallaxNotifier>(context).scrollOffset;
+    final double scrollOffset =
+        Provider.of<ParallaxNotifier>(context).scrollOffset;
     final double widgetPosition = _parallaxRowNotifier.widgetPosition;
     return (scrollOffset - widgetPosition) * widget.speed;
   }
@@ -101,11 +105,12 @@ class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
                 child: Image.asset(
                   widget.imagePath,
                   fit: BoxFit.cover,
-                  height: (widget.height ?? MediaQuery.of(context).size.height) * widget.decal,
+                  height:
+                      (widget.height ?? MediaQuery.of(context).size.height) *
+                          widget.decal,
                 ),
               ),
-              if (widget.child != null)
-                widget.child!,
+              if (widget.child != null) widget.child!,
             ],
           ),
         );
