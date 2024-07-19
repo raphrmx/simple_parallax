@@ -19,27 +19,36 @@ This Flutter plugin provides a simple and customizable parallax effect for your 
 ## Usage
 To use this plugin, wrap your scrollable content with the "**SimpleParallax**" and provide the path to your background image. Adjust the speed parameter to control the intensity of the parallax effect.
 
+## Exemple of SimpleParallaxContainer
 ```dart
 class MyApp extends StatelessWidget {
+  /// App demo constructor
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: SimpleParallax(
-          imagePath: 'assets/images/background.jpg', // Background image
-          speed: 0.3, // Speed of parallax effect 
-          decal: 1.0, // Start position of background image
-          // Scrollable content
-          child: Column(
-            children: List.generate(
-              20,
-              (index) => Container(
-                height: 100,
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                color: Colors.white.withOpacity(0.8),
-                child: Center(child: Text('Item $index')),
+        body: Center(
+          child: SizedBox(
+            height: 300, // Optional
+            width: 600, // Optional
+            child: SimpleParallaxContainer(
+              height: 300, // Optional
+              imagePath: 'assets/images/background.jpg',
+              speed: 0.3, // Optional
+              autoSpeed: true, // Optional
+              decal: 1.0, // Optional
+              child: Column(
+                children: List<Widget>.generate(
+                  20,
+                      (int index) => Container(
+                    height: 100,
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    color: Colors.white.withOpacity(0.8),
+                    child: Center(child: Text('Item $index')),
+                  ),
+                ),
               ),
             ),
           ),
@@ -50,58 +59,47 @@ class MyApp extends StatelessWidget {
 }
 ```
 
-## Tip to avoid background image overflow
-Calculate best parallax speed
+## Exemple of SimpleParallaxWidget
 ```dart
-/// Use a Statefull widget
-class _MyAppState extends State<MyApp> {
-  double _contentHeight = 1;
-  /// We use a GlobalKey to get a reference to the content widget.
-  final _contentKey = GlobalKey();
-  
-  void _calculateHeight() {
-    /// This method uses the GlobalKey to get the size of the content after rendering. 
-    /// RenderBox is used to access the dimensions of the widget.
-    final RenderBox renderBox = _columnKey.currentContext!.findRenderObject() as RenderBox;
-    setState(() {
-      _contentHeight = renderBox.size.height;
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    /// We add a postFrameCallback in initState to calculate the height of
-    /// the content after the widget has been rendered.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _calculateHeight());
-  }
+class MyApp extends StatelessWidget {
+  /// App demo constructor
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: Center(
-          child: SizedBox(
-            height: widgetHeight,
-            width: widgetWidth,
-            child: SimpleParallax(
-              imagePath: 'assets/images/background.jpg',
-              speed: widgetHeight / _contentHeight, // Calculating the ideal speed
-              decal: 1.0,
-              child: Column(
-                key: _contentKey,
-                children: List.generate(
-                  numberItems,
-                      (index) => Container(
-                    height: itemHeight,
-                    margin: const EdgeInsets.symmetric(vertical: itemMargin),
-                    color: Colors.white.withOpacity(0.8),
-                    child: Center(child: Text('Item $index')),
-                  ),
-                ),
+        body: SimpleParallaxWidget(
+          children: <Widget>[
+            Container(
+              color: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 200, horizontal: 0),
+              child: const SizedBox(
+                height: 50,
               ),
             ),
-          ),
+            const SimpleParallaxItem(
+              imagePath: 'assets/images/background.jpg',
+              height: 300,
+              child: Center(
+                child: Text('TEST 1'),
+              ),
+            ),
+            Container(
+              color: Colors.greenAccent,
+              child: const SizedBox(
+                height: 250,
+              ),
+            ),
+            const SimpleParallaxItem(
+              imagePath: 'assets/images/background.jpg',
+              height: 300,
+              child: Center(
+                child: Text('TEST 2'),
+              ),
+            ),
+            Container(height: 500, color: Colors.blueGrey),
+          ],
         ),
       ),
     );

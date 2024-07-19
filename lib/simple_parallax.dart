@@ -1,4 +1,3 @@
-import 'src/components/parallax_widget.dart';
-
-/// Typof parallax widget
-typedef SimpleParallax = ParallaxWidget;
+export './src/components/simple_parallax_container.dart';
+export './src/components/simple_parallax_widget.dart';
+export './src/components/simple_parallax_item.dart';
