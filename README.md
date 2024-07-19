@@ -8,7 +8,7 @@
 ![Flutter Status](https://img.shields.io/badge/Flutter_Version->=3.3-success)
 ![Generic badge](https://img.shields.io/badge/Platforms-Android,_iOS,_MacOS,_Windows,_Linux,_Web-22375C.svg)
 
-This Flutter plugin provides a simple and customizable parallax effect for your applications. Easily create stunning visual experiences by incorporating parallax scrolling into your widgets.
+This parallax Flutter plugin that adds elegant parallax effects to your widgets using two different modes: a container mode and a widget mode. This plugin helps create dynamic and visually appealing user interfaces with scrolling effects.
 
 ## Features
  - Smooth parallax scrolling for background images.
@@ -16,11 +16,31 @@ This Flutter plugin provides a simple and customizable parallax effect for your 
  - Simple integration with your existing Flutter projects.
  - Uses provider for state management ensuring efficient updates.
 
-## Usage
-To use this plugin, wrap your scrollable content with the "**SimpleParallax**" and provide the path to your background image. Adjust the speed parameter to control the intensity of the parallax effect.
+## Installation
+Add simple_parallax to your pubspec.yaml file:
 
-## Exemple of SimpleParallaxContainer
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  simple_parallax: ^0.1.0
+```
+Replace ^0.1.0 with the latest version from <a alt="pub.dev link" href="https://pub.dev/packages/simple_parallax" target="_blank" rel="noreferrer">pub.dev</a>.
+
+## Usage
+The simple_parallax plugin provides two main widgets to create parallax effects:
+
+### Container Mode (SimpleParallaxContainer)
+The container mode is used to add a parallax effect to a child widget with a background image.
+
+#### Exemple
 ```dart
+import 'package:flutter/material.dart';
+import 'package:simple_parallax/simple_parallax.dart';
+
+void main() => runApp(const MyApp());
+
+/// App demo
 class MyApp extends StatelessWidget {
   /// App demo constructor
   const MyApp({super.key});
@@ -31,14 +51,14 @@ class MyApp extends StatelessWidget {
       home: Scaffold(
         body: Center(
           child: SizedBox(
-            height: 300, // Optional
-            width: 600, // Optional
+            //height: 300,
+            //width: 600,
             child: SimpleParallaxContainer(
-              height: 300, // Optional
-              imagePath: 'assets/images/background.jpg',
-              speed: 0.3, // Optional
-              autoSpeed: true, // Optional
-              decal: 1.0, // Optional
+              //height: 300,
+              imagePath: 'assets/images/background.webp',
+              speed: 0.3,
+              autoSpeed: true,
+              decal: 1.0,
               child: Column(
                 children: List<Widget>.generate(
                   20,
@@ -59,8 +79,17 @@ class MyApp extends StatelessWidget {
 }
 ```
 
-## Exemple of SimpleParallaxWidget
+### Widget Mode (SimpleParallaxWidget)
+The widget mode allows you to apply a parallax effect to multiple child widgets within a list.
+
+#### Exemple
 ```dart
+import 'package:flutter/material.dart';
+import 'package:simple_parallax/simple_parallax.dart';
+
+void main() => runApp(const MyApp());
+
+/// App demo
 class MyApp extends StatelessWidget {
   /// App demo constructor
   const MyApp({super.key});
@@ -79,7 +108,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
             const SimpleParallaxItem(
-              imagePath: 'assets/images/background.jpg',
+              imagePath: 'assets/images/background.webp',
               height: 300,
               child: Center(
                 child: Text('TEST 1'),
@@ -92,7 +121,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
             const SimpleParallaxItem(
-              imagePath: 'assets/images/background.jpg',
+              imagePath: 'assets/images/background.webp',
               height: 300,
               child: Center(
                 child: Text('TEST 2'),
@@ -106,3 +135,34 @@ class MyApp extends StatelessWidget {
   }
 }
 ```
+
+## API
+
+### SimpleParallaxContainer
+- **imagePath** (required): Path to the background image.
+- **child** (required): The child widget to be displayed over the background image.
+- **speed** (optional): Parallax effect speed. Default value is 0.3.
+- **autoSpeed** (optional): Automatically calculates the speed based on the child widget's size.
+- **decal** (optional): Offset for the background image. Default value is 1.0.
+- **height** (optional): Height of the container. If not specified, uses the height of the screen.
+
+### SimpleParallaxWidget
+- **children** (required): List of child widgets with parallax effect.
+
+### SimpleParallaxItem
+- **imagePath** (required): Path to the background image.
+- **child** (optional): Child widget to be displayed over the background image.
+- **speed** (optional): Parallax effect speed. Default value is 0.3.
+- **decal** (optional): Offset for the background image. Default value is 1.5.
+- **width** (optional): Width of the item.
+- **height** (optional): Height of the item.
+
+## Contributing
+Contributions are welcome! To contribute to this plugin, please follow these steps:
+
+1. Fork the GitHub repository.
+2. Create a branch for your feature or fix.
+3. Submit a pull request with a description of your changes.
+
+## License
+This plugin is licensed under the MIT License. See the LICENSE file for more details.
