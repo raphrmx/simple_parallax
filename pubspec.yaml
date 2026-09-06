@@ -1,41 +1,28 @@
 name: simple_parallax
-description: "This parallax Flutter plugin that adds elegant parallax effects to your widgets using two different modes: a container mode and a widget mode. This plugin helps create dynamic and visually appealing user interfaces with scrolling effects."
-version: 0.1.1
+description: >-
+  Parallax widgets for Flutter, with a container mode and a per-item mode.
+  Pure Dart, no dependencies, works with any ImageProvider.
+version: 1.0.0
 homepage: https://www.comapps.be
 repository: https://github.com/raphrmx/simple_parallax
 issue_tracker: https://github.com/raphrmx/simple_parallax/issues
 
+topics:
+  - parallax
+  - animation
+  - scrolling
+  - ui
+  - widgets
+
 environment:
-  sdk: '>=3.4.0 <4.0.0'
+  sdk: ^3.4.0
   flutter: '>=3.22.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_web_plugins:
-    sdk: flutter
-  web: ^1.0.0
-  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
-
-flutter:
-  plugin:
-    platforms:
-      android:
-        package: com.example.simple_parallax
-        pluginClass: SimpleParallaxPlugin
-      ios:
-        pluginClass: SimpleParallaxPlugin
-      linux:
-        pluginClass: SimpleParallaxPlugin
-      macos:
-        pluginClass: SimpleParallaxPlugin
-      windows:
-        pluginClass: SimpleParallaxPluginCApi
-      web:
-        pluginClass: SimpleParallaxWeb
-        fileName: simple_parallax_web.dart
+  flutter_lints: ^6.0.0

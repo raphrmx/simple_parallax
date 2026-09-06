@@ -1,37 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:simple_parallax/simple_parallax.dart';
 
-void main() => runApp(const MyApp());
+void main() => runApp(const ContainerDemo());
 
-/// App demo
-class MyApp extends StatelessWidget {
-  /// App demo constructor
-  const MyApp({super.key});
+/// Container mode: one background drifting behind a scrolling column.
+class ContainerDemo extends StatelessWidget {
+  /// Creates the container demo.
+  const ContainerDemo({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: Center(
-          child: SizedBox(
-            //height: 300,
-            //width: 600,
-            child: SimpleParallaxContainer(
-              //height: 300,
-              imagePath: 'assets/images/background.webp',
-              speed: 0.3,
-              autoSpeed: true,
-              decal: 1.0,
-              child: Column(
-                children: List<Widget>.generate(
-                  20,
-                  (int index) => Container(
-                    height: 100,
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    color: Colors.white.withOpacity(0.8),
-                    child: Center(child: Text('Item $index')),
-                  ),
-                ),
+        body: SimpleParallaxContainer(
+          image: const AssetImage('assets/images/background.webp'),
+          autoSpeed: true,
+          overscan: 1.5,
+          child: Column(
+            children: List<Widget>.generate(
+              20,
+              (int index) => Container(
+                height: 100,
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                color: Colors.white.withValues(alpha: 0.8),
+                child: Center(child: Text('Item $index')),
               ),
             ),
           ),

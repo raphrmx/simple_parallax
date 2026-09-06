@@ -7,7 +7,6 @@ linter:
     - always_specify_types
     - avoid_dynamic_calls
     - avoid_print
-    - avoid_returning_null
     - avoid_slow_async_io
     - avoid_types_as_parameter_names
     - avoid_void_async
@@ -25,7 +24,6 @@ linter:
     - prefer_const_literals_to_create_immutables
     - prefer_constructors_over_static_methods
     - prefer_contains
-    - prefer_equal_for_default_values
     - prefer_final_fields
     - prefer_final_locals
     - prefer_generic_function_type_aliases

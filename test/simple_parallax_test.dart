@@ -1,0 +1,216 @@
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:simple_parallax/simple_parallax.dart';
+
+/// A 1x1 transparent PNG, so the tests never touch the asset bundle or the
+/// network.
+final Uint8List _pixel = Uint8List.fromList(<int>[
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, //
+  0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+  0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+  0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+  0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+  0x42, 0x60, 0x82,
+]);
+
+ImageProvider get _image => MemoryImage(_pixel);
+
+Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
+
+void main() {
+  group('SimpleParallaxContainer', () {
+    testWidgets('renders its child and a background',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: _image,
+            child: Column(
+              children: List<Widget>.generate(
+                10,
+                (int i) => SizedBox(height: 100, child: Text('Item $i')),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Item 0'), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
+    });
+
+    test('rejects an overscan below 1', () {
+      expect(
+        () => SimpleParallaxContainer(
+          image: _image,
+          overscan: 0.5,
+          child: const SizedBox(),
+        ),
+        throwsAssertionError,
+      );
+    });
+
+    testWidgets('moves its background as the content scrolls', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: _image,
+            speed: 0.5,
+            overscan: 2,
+            child: Column(
+              children: List<Widget>.generate(
+                20,
+                (int i) => SizedBox(height: 100, child: Text('Item $i')),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      Offset backgroundTopLeft() => tester.getTopLeft(find.byType(Image).first);
+
+      final Offset before = backgroundTopLeft();
+      await tester.drag(find.text('Item 0'), const Offset(0, -300));
+      await tester.pump();
+
+      expect(backgroundTopLeft().dy, lessThan(before.dy));
+    });
+
+    testWidgets('lets a scroll notification keep bubbling', (
+      WidgetTester tester,
+    ) async {
+      int seenByAncestor = 0;
+
+      await tester.pumpWidget(
+        _app(
+          NotificationListener<ScrollUpdateNotification>(
+            onNotification: (_) {
+              seenByAncestor++;
+              return false;
+            },
+            child: SimpleParallaxContainer(
+              image: _image,
+              child: Column(
+                children: List<Widget>.generate(
+                  20,
+                  (int i) => SizedBox(height: 100, child: Text('Item $i')),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.drag(find.text('Item 0'), const Offset(0, -200));
+      await tester.pump();
+
+      expect(seenByAncestor, greaterThan(0));
+    });
+
+    testWidgets('disposes without leaving a listener behind', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: _image,
+            child: const SizedBox(height: 2000),
+          ),
+        ),
+      );
+      await tester.pumpWidget(_app(const SizedBox()));
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('SimpleParallaxItem', () {
+    testWidgets('renders inside any scrollable', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SimpleParallaxItem(
+                image: _image,
+                height: 200,
+                child: const Text('Caption'),
+              ),
+              const SizedBox(height: 1000),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('Caption'), findsOneWidget);
+      expect(find.byType(Flow), findsOneWidget);
+    });
+
+    testWidgets('falls back to a still background outside a scrollable', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(SimpleParallaxItem(image: _image, height: 200)),
+      );
+
+      expect(find.byType(Flow), findsNothing);
+      expect(find.byType(Image), findsOneWidget);
+    });
+
+    testWidgets('survives being scrolled out of the tree', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SimpleParallaxItem(image: _image, height: 200),
+              const SizedBox(height: 2000),
+            ],
+          ),
+        ),
+      );
+
+      await tester.drag(find.byType(ListView), const Offset(0, -1500));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    test('rejects a speed outside 0..1', () {
+      expect(
+        () => SimpleParallaxItem(image: _image, speed: 2),
+        throwsAssertionError,
+      );
+    });
+  });
+
+  group('SimpleParallaxWidget', () {
+    testWidgets('scrolls the blocks it is given', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxWidget(
+            children: <Widget>[
+              const SizedBox(height: 400, child: Text('First')),
+              SimpleParallaxItem(image: _image, height: 300),
+              const SizedBox(height: 800, child: Text('Last')),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('First'), findsOneWidget);
+      await tester.drag(find.text('First'), const Offset(0, -900));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Last'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+}
