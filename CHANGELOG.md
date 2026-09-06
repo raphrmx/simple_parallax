@@ -1,5 +1,9 @@
 # SimpleParallax Versions
 
+## 1.0.2
+
+Add animated previews in to README.md
+
 ## 1.0.1
 
 Improve example and comments.
