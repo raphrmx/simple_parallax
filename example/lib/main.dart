@@ -22,7 +22,7 @@ class ContainerDemo extends StatelessWidget {
               (int index) => Container(
                 height: 100,
                 margin: const EdgeInsets.symmetric(vertical: 10),
-                color: Colors.white.withValues(alpha: 0.8),
+                color: const Color(0xCCFFFFFF),
                 child: Center(child: Text('Item $index')),
               ),
             ),
