@@ -5,6 +5,13 @@
 Parallax widgets for Flutter, in pure Dart. Two modes, any `ImageProvider`, and no dependencies
 beyond the Flutter SDK.
 
+<p>
+  <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp" alt="Container mode" width="250">
+  &nbsp;&nbsp;
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode.webp" alt="Item mode" width="250">
+</p>
+<sub>Container mode, one background behind the whole scroll area &nbsp;|&nbsp; item mode, each block slides its own.</sub>
+
 [![Build](https://img.shields.io/github/actions/workflow/status/raphrmx/simple_parallax/ci.yml?branch=main&label=build)](https://github.com/raphrmx/simple_parallax/actions/workflows/ci.yml)
 [![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=blue)](https://pub.dev/packages/simple_parallax)
 ![Maintainer](https://img.shields.io/badge/Maintainer-Raphael-purple)
