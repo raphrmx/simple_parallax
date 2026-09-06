@@ -46,5 +46,12 @@ jobs:
 
       # Fails on a packaging regression, such as a CHANGELOG that no longer
       # mentions the version in pubspec.yaml.
+      #
+      # The tree is restored first: `flutter pub get` rewrites generated files
+      # that are checked in, and the dry-run also refuses a working tree that
+      # differs from HEAD. That last check guards a human publishing from a
+      # dirty directory, and means nothing on a fresh checkout.
       - name: Validate the package
-        run: flutter pub publish --dry-run
+        run: |
+          git checkout -- .
+          flutter pub publish --dry-run
