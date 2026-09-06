@@ -1,5 +1,9 @@
 # SimpleParallax Versions
 
+## 1.0.1
+
+Improve example and comments.
+
 ## 1.0.0
 
 Rewrite. **Breaking changes**, see the migration table below.
