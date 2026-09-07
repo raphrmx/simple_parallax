@@ -2,8 +2,11 @@
 
 ## 1.1.1
 
-README only, no code change.
+Documentation and example, no library change.
 
+- The example covers all four combinations, two modes by two axes, behind a menu. They share
+  `example/lib/main.dart` because that is the only file pub.dev renders on the example tab, so the
+  three separate entry points only ever showed one of them there.
 - The four preview animations are redone in one format, 520x260 at 25 frames a second, and laid out
   as a grid: modes in rows, axes in columns. 1.1.0 shipped before they were regenerated, so its
   README sized the vertical pair as portrait.

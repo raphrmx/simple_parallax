@@ -1,16 +1,15 @@
 # simple_parallax_example
 
-Demonstrates how to use the simple_parallax plugin.
+One app, four screens, one per combination the package offers:
 
-## Getting Started
+| | Vertical | Horizontal |
+| --- | --- | --- |
+| Container mode | `ContainerVerticalDemo` | `ContainerHorizontalDemo` |
+| Item mode | `ItemVerticalDemo` | `ItemHorizontalDemo` |
 
-This project is a starting point for a Flutter application.
+They all live in [lib/main.dart](lib/main.dart), which opens on a menu listing the four. pub.dev
+renders that single file on the example tab, which is why they are not split across several.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```sh
+flutter run
+```

@@ -157,6 +157,15 @@ The package is no longer a Flutter plugin: the native platform folders are gone,
 
 None beyond the Flutter SDK.
 
+## Example
+
+`example/` is one app with four screens, one per combination: container mode and item mode, each
+vertical and horizontal.
+
+```sh
+cd example && flutter run
+```
+
 ## Tests
 
 ```sh
