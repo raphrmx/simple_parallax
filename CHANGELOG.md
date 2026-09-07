@@ -1,5 +1,13 @@
 # SimpleParallax Versions
 
+## 1.1.1
+
+README only, no code change.
+
+- The four preview animations are redone in one format, 520x260 at 25 frames a second, and laid out
+  as a grid: modes in rows, axes in columns. 1.1.0 shipped before they were regenerated, so its
+  README sized the vertical pair as portrait.
+
 ## 1.1.0
 
 Horizontal parallax.
@@ -11,8 +19,7 @@ Horizontal parallax.
   horizontal list with nothing to pass. Its `height` and `width` defaults swap accordingly: the
   scrolled axis falls back to the screen extent, the cross axis to the incoming constraints.
 - `SimpleParallaxContainer.width`, the horizontal counterpart of `height`.
-- A horizontal example, `example/lib/main_horizontal.dart`. The README previews are redone: four
-  animations in one format, one per mode and axis.
+- A horizontal example, `example/lib/main_horizontal.dart`, and horizontal previews in the README.
 
 ### Fixed
 - `SimpleParallaxContainer` ignores scroll notifications from a nested scrollable running on the
