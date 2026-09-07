@@ -6,15 +6,17 @@ Parallax widgets for Flutter, in pure Dart. Two modes, either axis, any `ImagePr
 dependencies beyond the Flutter SDK.
 
 <p>
-  <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp" alt="Container mode" width="250">
-  &nbsp;&nbsp;
-  <img src="https://public.comapps.be/packages/simple_parallax/item_mode.webp" alt="Item mode" width="250">
+  <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp" alt="Container mode, scrolling down" width="330">
+  &nbsp;
+  <img src="https://public.comapps.be/packages/simple_parallax/container_mode_horizontal.webp" alt="Container mode, scrolling sideways" width="330">
 </p>
 <p>
-  <img src="https://public.comapps.be/packages/simple_parallax/container_mode_horizontal.webp" alt="Container mode, scrolling sideways" width="300">
-  &nbsp;&nbsp;
-  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_horizontal.webp" alt="Item mode, scrolling sideways" width="300">
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode.webp" alt="Item mode, scrolling down" width="330">
+  &nbsp;
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_horizontal.webp" alt="Item mode, scrolling sideways" width="330">
 </p>
+
+<sub>Container mode above, item mode below; scrolling down on the left, sideways on the right.</sub>
 
 [![Build](https://img.shields.io/github/actions/workflow/status/raphrmx/simple_parallax/ci.yml?branch=main&label=build)](https://github.com/raphrmx/simple_parallax/actions/workflows/ci.yml)
 [![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=blue)](https://pub.dev/packages/simple_parallax)

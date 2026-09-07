@@ -11,7 +11,8 @@ Horizontal parallax.
   horizontal list with nothing to pass. Its `height` and `width` defaults swap accordingly: the
   scrolled axis falls back to the screen extent, the cross axis to the incoming constraints.
 - `SimpleParallaxContainer.width`, the horizontal counterpart of `height`.
-- A horizontal example, `example/lib/main_horizontal.dart`, and horizontal previews in the README.
+- A horizontal example, `example/lib/main_horizontal.dart`. The README previews are redone: four
+  animations in one format, one per mode and axis.
 
 ### Fixed
 - `SimpleParallaxContainer` ignores scroll notifications from a nested scrollable running on the
