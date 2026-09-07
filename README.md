@@ -6,14 +6,14 @@ Parallax widgets for Flutter, in pure Dart. Two modes, either axis, any `ImagePr
 dependencies beyond the Flutter SDK.
 
 <p>
-  <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp" alt="Container mode, scrolling down" width="330">
+  <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp?v=2" alt="Container mode, scrolling down" width="330">
   &nbsp;
-  <img src="https://public.comapps.be/packages/simple_parallax/container_mode_horizontal.webp" alt="Container mode, scrolling sideways" width="330">
+  <img src="https://public.comapps.be/packages/simple_parallax/container_mode_horizontal.webp?v=2" alt="Container mode, scrolling sideways" width="330">
 </p>
 <p>
-  <img src="https://public.comapps.be/packages/simple_parallax/item_mode.webp" alt="Item mode, scrolling down" width="330">
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode.webp?v=2" alt="Item mode, scrolling down" width="330">
   &nbsp;
-  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_horizontal.webp" alt="Item mode, scrolling sideways" width="330">
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_horizontal.webp?v=2" alt="Item mode, scrolling sideways" width="330">
 </p>
 
 <sub>Container mode above, item mode below; scrolling down on the left, sideways on the right.</sub>
