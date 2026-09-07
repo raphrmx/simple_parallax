@@ -83,6 +83,72 @@ void main() {
       expect(backgroundTopLeft().dy, lessThan(before.dy));
     });
 
+    testWidgets('moves its background sideways when scrolled horizontally', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: _image,
+            scrollDirection: Axis.horizontal,
+            speed: 0.5,
+            overscan: 2,
+            child: Row(
+              children: List<Widget>.generate(
+                20,
+                (int i) => SizedBox(width: 100, child: Text('Item $i')),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      Offset backgroundTopLeft() => tester.getTopLeft(find.byType(Image).first);
+
+      final Offset before = backgroundTopLeft();
+      await tester.drag(find.text('Item 0'), const Offset(-300, 0));
+      await tester.pump();
+
+      final Offset after = backgroundTopLeft();
+      expect(after.dx, lessThan(before.dx));
+      expect(after.dy, before.dy);
+    });
+
+    testWidgets('ignores a scrollable running the other way', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: _image,
+            speed: 0.5,
+            overscan: 2,
+            child: Column(
+              children: <Widget>[
+                SizedBox(
+                  height: 100,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: List<Widget>.generate(
+                      20,
+                      (int i) => SizedBox(width: 100, child: Text('Nested $i')),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2000),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final Offset before = tester.getTopLeft(find.byType(Image).first);
+      await tester.drag(find.text('Nested 0'), const Offset(-300, 0));
+      await tester.pump();
+
+      expect(tester.getTopLeft(find.byType(Image).first), before);
+    });
+
     testWidgets('lets a scroll notification keep bubbling', (
       WidgetTester tester,
     ) async {
@@ -163,6 +229,41 @@ void main() {
       expect(find.byType(Image), findsOneWidget);
     });
 
+    testWidgets('slides sideways inside a horizontal scrollable', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            scrollDirection: Axis.horizontal,
+            children: <Widget>[
+              const SizedBox(width: 600),
+              SimpleParallaxItem(
+                image: _image,
+                width: 200,
+                overscan: 2,
+                child: const Text('Caption'),
+              ),
+              const SizedBox(width: 1000),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('Caption'), findsOneWidget);
+      expect(find.byType(Flow), findsOneWidget);
+
+      Offset backgroundTopLeft() => tester.getTopLeft(find.byType(Image).first);
+
+      final Offset before = backgroundTopLeft();
+      await tester.drag(find.byType(ListView), const Offset(-300, 0));
+      await tester.pump();
+
+      final Offset after = backgroundTopLeft();
+      expect(after.dx, isNot(before.dx));
+      expect(after.dy, before.dy);
+    });
+
     testWidgets('survives being scrolled out of the tree', (
       WidgetTester tester,
     ) async {
@@ -207,6 +308,31 @@ void main() {
 
       expect(find.text('First'), findsOneWidget);
       await tester.drag(find.text('First'), const Offset(0, -900));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Last'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('lays its blocks out in a row when horizontal', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxWidget(
+            scrollDirection: Axis.horizontal,
+            children: <Widget>[
+              const SizedBox(width: 400, child: Text('First')),
+              SimpleParallaxItem(image: _image, width: 300),
+              const SizedBox(width: 800, child: Text('Last')),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.byType(Row), findsOneWidget);
+      expect(find.text('First'), findsOneWidget);
+      await tester.drag(find.text('First'), const Offset(-900, 0));
       await tester.pumpAndSettle();
 
       expect(find.text('Last'), findsOneWidget);

@@ -1,5 +1,22 @@
 # SimpleParallax Versions
 
+## 1.1.0
+
+Horizontal parallax.
+
+### Added
+- `SimpleParallaxContainer.scrollDirection` and `SimpleParallaxWidget.scrollDirection`. The
+  background drifts along the scrolled axis, and `overscan` sizes it on that axis.
+- `SimpleParallaxItem` reads the axis from the scrollable it sits in, so it slides sideways in a
+  horizontal list with nothing to pass. Its `height` and `width` defaults swap accordingly: the
+  scrolled axis falls back to the screen extent, the cross axis to the incoming constraints.
+- `SimpleParallaxContainer.width`, the horizontal counterpart of `height`.
+- A horizontal example, `example/lib/main_horizontal.dart`, and horizontal previews in the README.
+
+### Fixed
+- `SimpleParallaxContainer` ignores scroll notifications from a nested scrollable running on the
+  other axis, which used to drag the background along.
+
 ## 1.0.2
 
 Add animated previews in to README.md

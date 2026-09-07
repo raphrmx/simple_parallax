@@ -9,7 +9,9 @@
 ///     them.
 ///
 /// Both take an [ImageProvider], so assets, network images, files and raw
-/// bytes are all supported.
+/// bytes are all supported, and both work vertically or horizontally: the
+/// container takes a `scrollDirection`, and the item reads the axis of the
+/// scrollable it sits in.
 ///
 /// ### Example:
 /// ```dart
