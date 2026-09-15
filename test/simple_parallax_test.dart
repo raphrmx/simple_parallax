@@ -55,6 +55,84 @@ void main() {
       );
     });
 
+    testWidgets('renders the slivers it is given', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer.slivers(
+            image: _image,
+            slivers: <Widget>[
+              SliverList.builder(
+                itemCount: 10,
+                itemBuilder: (BuildContext context, int index) =>
+                    SizedBox(height: 100, child: Text('Item $index')),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('Item 0'), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
+    });
+
+    testWidgets('builds a sliver list no further than the viewport', (
+      WidgetTester tester,
+    ) async {
+      int built = 0;
+
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer.slivers(
+            image: _image,
+            slivers: <Widget>[
+              SliverList.builder(
+                itemCount: 1000,
+                itemBuilder: (BuildContext context, int index) {
+                  built++;
+                  return SizedBox(height: 100, child: Text('Item $index'));
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(built, lessThan(50));
+      expect(find.text('Item 999'), findsNothing);
+    });
+
+    testWidgets('moves its background under scrolling slivers', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer.slivers(
+            image: _image,
+            speed: 0.5,
+            overscan: 2,
+            slivers: <Widget>[
+              SliverList.builder(
+                itemCount: 20,
+                itemBuilder: (BuildContext context, int index) =>
+                    SizedBox(height: 100, child: Text('Item $index')),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final Offset before = tester.getTopLeft(find.byType(Image).first);
+      await tester.drag(find.text('Item 0'), const Offset(0, -300));
+      await tester.pump();
+
+      expect(
+        tester.getTopLeft(find.byType(Image).first).dy,
+        lessThan(before.dy),
+      );
+    });
+
     testWidgets('moves its background as the content scrolls', (
       WidgetTester tester,
     ) async {
@@ -314,7 +392,47 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('lays its blocks out in a row when horizontal', (
+    testWidgets('builds its blocks only as they come into view', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxWidget(
+            children: <Widget>[
+              const SizedBox(height: 400, child: Text('First')),
+              SimpleParallaxItem(image: _image, height: 800),
+              const SizedBox(height: 800, child: Text('Last')),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.text('Last'), findsNothing);
+
+      await tester.drag(find.text('First'), const Offset(0, -900));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Last'), findsOneWidget);
+    });
+
+    testWidgets('pads the list it is given', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxWidget(
+            padding: const EdgeInsets.all(20),
+            children: <Widget>[
+              const SizedBox(height: 400, child: Text('First')),
+              SimpleParallaxItem(image: _image, height: 300),
+            ],
+          ),
+        ),
+      );
+
+      expect(tester.getTopLeft(find.text('First')).dy, 20);
+      expect(find.byType(SliverPadding), findsOneWidget);
+    });
+
+    testWidgets('lays its blocks out along the horizontal axis', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -330,7 +448,10 @@ void main() {
         ),
       );
 
-      expect(find.byType(Row), findsOneWidget);
+      expect(
+        tester.widget<Scrollable>(find.byType(Scrollable)).axisDirection,
+        AxisDirection.right,
+      );
       expect(find.text('First'), findsOneWidget);
       await tester.drag(find.text('First'), const Offset(-900, 0));
       await tester.pumpAndSettle();

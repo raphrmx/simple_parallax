@@ -1,5 +1,25 @@
 # SimpleParallax Versions
 
+## 1.2.0
+
+Both scroll views move to slivers.
+
+### Added
+- `SimpleParallaxContainer.slivers`, which takes the content as a list of slivers instead of a
+  single child. The content then builds as it scrolls, and a `SliverAppBar` or a `SliverGrid` can
+  ride over the background. On a long list prefer a fixed `speed`: `autoSpeed` spreads the travel
+  `overscan` allows over the whole extent, so the drift becomes imperceptible.
+- A fifth example screen, `ContainerSliversDemo`.
+
+### Changed
+- `SimpleParallaxContainer` builds a `CustomScrollView` rather than a `SingleChildScrollView`. The
+  default constructor puts `child` in a `SliverToBoxAdapter`, which lays it out exactly as before.
+- `SimpleParallaxWidget` builds a `CustomScrollView` over one `SliverList` rather than a
+  `SingleChildScrollView` over a `Column` or a `Row`, so its blocks build as they come into view.
+  Two consequences, both of them `ListView` behaviour: a block is laid out across the full cross
+  axis instead of being centred on it, and a block outside the viewport is not in the tree. Pass a
+  block that must keep a narrower cross extent through an `Align` or a `Center`.
+
 ## 1.1.1
 
 Documentation and example, no library change.

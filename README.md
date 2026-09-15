@@ -50,7 +50,8 @@ SimpleParallaxContainer(
 | Parameter | Default | Effect |
 | --- | --- | --- |
 | `image` | required | Any `ImageProvider`: asset, network, file or memory. |
-| `child` | required | The scrolling content. |
+| `child` | required | The scrolling content, laid out as a single box sliver. |
+| `slivers` | required | The scrolling content as slivers, on the `.slivers` constructor. |
 | `scrollDirection` | `Axis.vertical` | The axis the content scrolls and the background drifts along. |
 | `speed` | `0.3` | Background travel per pixel scrolled. Ignored when `autoSpeed` is set. |
 | `autoSpeed` | `false` | Derives the speed from the scroll extent. |
@@ -59,6 +60,31 @@ SimpleParallaxContainer(
 | `width` | `null` | Forces the viewport width instead of using the constraints. |
 | `fit` | `BoxFit.cover` | How the background fills its layer. |
 | `alignment` | `Alignment.center` | How the background sits inside its layer. |
+
+### Slivers
+
+The container is a `CustomScrollView`, and `child` is put in a single box sliver. Use the
+`.slivers` constructor instead to hand it the slivers yourself, so the content builds as it scrolls
+and other slivers can ride over the background:
+
+```dart
+SimpleParallaxContainer.slivers(
+  image: const AssetImage('assets/images/background.webp'),
+  autoSpeed: true,
+  slivers: <Widget>[
+    const SliverAppBar(title: Text('Chapters'), floating: true),
+    SliverList.builder(
+      itemCount: 500,
+      itemBuilder: (BuildContext context, int index) =>
+          ListTile(title: Text('Chapter $index')),
+    ),
+  ],
+);
+```
+
+Everything else behaves the same: the background still drifts along `scrollDirection`, and
+`autoSpeed` still reads the real scroll extent. On a long list, prefer a fixed `speed`: `autoSpeed`
+spreads the travel `overscan` allows over the whole extent, so the drift becomes imperceptible.
 
 ## Item mode
 
@@ -88,8 +114,9 @@ ListView(
 | `width` | constraints, or screen width when horizontal | Item width. |
 | `fit` | `BoxFit.cover` | How the background fills its layer. |
 
-`SimpleParallaxWidget` is a convenience scroll view for a handful of items. Prefer a `ListView` when
-the list is long enough to need lazy building.
+`SimpleParallaxWidget` is a convenience scroll view for a list of items. It is a `CustomScrollView`
+over one `SliverList`, so the blocks build as they come into view and each one is laid out across
+the full cross axis, the way a `ListView` lays its children out.
 
 ```dart
 SimpleParallaxWidget(
@@ -130,8 +157,7 @@ ListView(
 );
 ```
 
-`SimpleParallaxWidget` takes the same `scrollDirection` and lays its blocks out in a `Row` when it
-is horizontal.
+`SimpleParallaxWidget` takes the same `scrollDirection` and lays its blocks out along that axis.
 
 ## How it performs
 
@@ -139,6 +165,9 @@ Scrolling repaints the background and nothing else. In container mode the moving
 `RepaintBoundary` and only its transform is rebuilt, so your content is built once. In item mode the
 background is painted by a `Flow` bound directly to the scroll position, which repaints without
 rebuilding a single widget.
+
+Both scroll views are `CustomScrollView`s, so content handed over as slivers is built only as far as
+the viewport reaches.
 
 ## Migrating from 0.1.x
 

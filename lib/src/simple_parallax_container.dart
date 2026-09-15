@@ -7,12 +7,18 @@ import 'package:flutter/widgets.dart';
 /// what produces the depth. Only the background repaints while scrolling:
 /// [child] is built once and reused across frames.
 ///
+/// The content is a [CustomScrollView]. The default constructor puts [child] in
+/// a single box sliver, which builds it whole; [SimpleParallaxContainer.slivers]
+/// takes the slivers themselves, so a long list builds lazily and a
+/// `SliverAppBar` or a `SliverGrid` can sit in front of the background.
+///
 /// ---
 ///
 /// ### Parameters:
 /// - [image]: any [ImageProvider], so an asset, a network image, a file or
 ///   raw bytes all work.
-/// - [child]: the scrolling content, laid out in a [SingleChildScrollView].
+/// - [child]: the scrolling content, laid out as a single box sliver.
+/// - [slivers]: the scrolling content as slivers, which build lazily.
 /// - [scrollDirection]: the axis the content scrolls along, and therefore the
 ///   axis the background drifts along.
 /// - [speed]: how far the background moves per pixel scrolled. `0` pins it,
@@ -47,11 +53,26 @@ import 'package:flutter/widgets.dart';
 ///   child: Row(children: items),
 /// );
 /// ```
+///
+/// The same container over a list that builds as it scrolls:
+/// ```dart
+/// SimpleParallaxContainer.slivers(
+///   image: const AssetImage('assets/images/background.webp'),
+///   autoSpeed: true,
+///   slivers: <Widget>[
+///     SliverList.builder(
+///       itemCount: 500,
+///       itemBuilder: (BuildContext context, int index) =>
+///           ListTile(title: Text('Chapter $index')),
+///     ),
+///   ],
+/// );
+/// ```
 class SimpleParallaxContainer extends StatefulWidget {
-  /// Creates a parallax container.
+  /// Creates a parallax container over a single box [child].
   const SimpleParallaxContainer({
     required this.image,
-    required this.child,
+    required Widget this.child,
     this.scrollDirection = Axis.vertical,
     this.speed = 0.3,
     this.autoSpeed = false,
@@ -61,13 +82,34 @@ class SimpleParallaxContainer extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.alignment = Alignment.center,
     super.key,
-  }) : assert(overscan >= 1, 'overscan must be at least 1');
+  })  : slivers = null,
+        assert(overscan >= 1, 'overscan must be at least 1');
+
+  /// Creates a parallax container over [slivers], which build lazily.
+  const SimpleParallaxContainer.slivers({
+    required this.image,
+    required List<Widget> this.slivers,
+    this.scrollDirection = Axis.vertical,
+    this.speed = 0.3,
+    this.autoSpeed = false,
+    this.overscan = 1.5,
+    this.height,
+    this.width,
+    this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
+    super.key,
+  })  : child = null,
+        assert(overscan >= 1, 'overscan must be at least 1');
 
   /// Background image.
   final ImageProvider image;
 
-  /// Scrolling content.
-  final Widget child;
+  /// Scrolling content, or `null` when the container was given [slivers].
+  final Widget? child;
+
+  /// Scrolling content as slivers, or `null` when the container was given a
+  /// [child].
+  final List<Widget>? slivers;
 
   /// Axis the content scrolls along, and the background drifts along.
   final Axis scrollDirection;
@@ -137,6 +179,14 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
     return false;
   }
 
+  /// The scrolling content: the slivers the caller gave us, or the single box
+  /// sliver holding [SimpleParallaxContainer.child].
+  Widget _buildContent() => CustomScrollView(
+        scrollDirection: widget.scrollDirection,
+        slivers:
+            widget.slivers ?? <Widget>[SliverToBoxAdapter(child: widget.child)],
+      );
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -202,10 +252,7 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
                     ),
                   ),
                 ),
-                SingleChildScrollView(
-                  scrollDirection: widget.scrollDirection,
-                  child: widget.child,
-                ),
+                _buildContent(),
               ],
             ),
           ),

@@ -2,11 +2,14 @@ import 'package:flutter/widgets.dart';
 
 /// A scroll view meant to hold `SimpleParallaxItem` blocks.
 ///
-/// This is a convenience around a [SingleChildScrollView] and a [Column], or a
-/// [Row] when [scrollDirection] is horizontal: items find the enclosing
-/// [Scrollable] themselves and read its axis, so any scroll view works just as
-/// well. Reach for a [ListView] instead when the list is long enough to need
-/// lazy building.
+/// This is a convenience around a [CustomScrollView] holding one [SliverList],
+/// so the blocks build as they come into view however long the list is. Items
+/// find the enclosing [Scrollable] themselves and read its axis, so any scroll
+/// view works just as well; reach for a [CustomScrollView] directly once the
+/// page needs other slivers alongside the blocks.
+///
+/// Each block is laid out across the full cross axis, the way a [ListView] lays
+/// its children out.
 ///
 /// ---
 ///
@@ -15,7 +18,7 @@ import 'package:flutter/widgets.dart';
 /// - [scrollDirection]: the axis the blocks are laid out and scrolled along.
 /// - [controller]: an optional [ScrollController], for instance to drive the
 ///   position from outside.
-/// - [padding]: padding around the column or row.
+/// - [padding]: padding around the list of blocks.
 /// - [physics]: scroll physics to hand to the scroll view.
 ///
 /// ### Example:
@@ -31,7 +34,7 @@ import 'package:flutter/widgets.dart';
 /// );
 /// ```
 ///
-/// The same blocks scrolling sideways:
+/// The same blocks scrolling sideways, laid out along the horizontal axis:
 /// ```dart
 /// SimpleParallaxWidget(
 ///   scrollDirection: Axis.horizontal,
@@ -64,7 +67,7 @@ class SimpleParallaxWidget extends StatelessWidget {
   /// Optional controller for the underlying scroll view.
   final ScrollController? controller;
 
-  /// Padding around the column or row.
+  /// Padding around the list of blocks.
   final EdgeInsetsGeometry? padding;
 
   /// Scroll physics handed to the underlying scroll view.
@@ -72,14 +75,19 @@ class SimpleParallaxWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    final Widget list = SliverList.list(children: children);
+    final EdgeInsetsGeometry? insets = padding;
+
+    return CustomScrollView(
       scrollDirection: scrollDirection,
       controller: controller,
-      padding: padding,
       physics: physics,
-      child: scrollDirection == Axis.horizontal
-          ? Row(children: children)
-          : Column(children: children),
+      slivers: <Widget>[
+        if (insets == null)
+          list
+        else
+          SliverPadding(padding: insets, sliver: list),
+      ],
     );
   }
 }

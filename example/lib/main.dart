@@ -5,7 +5,8 @@ void main() => runApp(const ExampleApp());
 
 const AssetImage _background = AssetImage('assets/images/background.webp');
 
-/// The four combinations the package offers: two modes, two axes.
+/// The combinations the package offers: two modes, two axes, and the sliver
+/// form of the container.
 class ExampleApp extends StatelessWidget {
   /// Creates the example app.
   const ExampleApp({super.key});
@@ -28,6 +29,11 @@ class ExampleApp extends StatelessWidget {
                 context,
                 'Container mode, horizontal',
                 const ContainerHorizontalDemo(),
+              ),
+              _entry(
+                context,
+                'Container mode, slivers',
+                const ContainerSliversDemo(),
               ),
               _entry(
                 context,
@@ -106,6 +112,7 @@ class ContainerHorizontalDemo extends StatelessWidget {
           children: List<Widget>.generate(
             20,
             (int index) => Container(
+              height: 150,
               width: 150,
               margin: const EdgeInsets.symmetric(horizontal: 10),
               color: const Color(0xCCFFFFFF),
@@ -118,11 +125,48 @@ class ContainerHorizontalDemo extends StatelessWidget {
   }
 }
 
+/// Container mode over slivers, so the content builds as it scrolls.
+///
+/// `SimpleParallaxContainer.slivers` takes the content as slivers instead of a
+/// single child, which lets a `SliverAppBar` ride over the background and a
+/// list build only the rows the viewport needs.
+class ContainerSliversDemo extends StatelessWidget {
+  /// Creates the sliver container demo.
+  const ContainerSliversDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SimpleParallaxContainer.slivers(
+        image: _background,
+        autoSpeed: true,
+        overscan: 1.5,
+        slivers: <Widget>[
+          const SliverAppBar(
+            title: Text('Slivers'),
+            backgroundColor: Color(0x66000000),
+            foregroundColor: Color(0xFFFFFFFF),
+            floating: true,
+          ),
+          SliverList.builder(
+            itemCount: 40,
+            itemBuilder: (BuildContext context, int index) => Container(
+              height: 100,
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              color: const Color(0xCCFFFFFF),
+              child: Center(child: Text('Item $index')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Item mode: each block slides its own background as it crosses the viewport.
 ///
-/// `SimpleParallaxWidget` is a convenience scroll view; a `ListView` works just
-/// as well, and is the better choice once the list is long enough to need lazy
-/// building.
+/// `SimpleParallaxWidget` is a convenience scroll view built on a `SliverList`,
+/// so its blocks build as they come into view; a `ListView` works just as well.
 class ItemVerticalDemo extends StatelessWidget {
   /// Creates the vertical item demo.
   const ItemVerticalDemo({super.key});
