@@ -1,5 +1,9 @@
 # SimpleParallax Versions
 
+## 1.2.1
+
+Modify topic widgets to sliver in to pubspec.yaml
+
 ## 1.2.0
 
 Both scroll views move to slivers.
