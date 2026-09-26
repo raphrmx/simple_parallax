@@ -1,11 +1,22 @@
 name: simple_parallax
 description: >-
   Parallax widgets for Flutter, with a container mode and a per-item mode,
-  vertical or horizontal. Pure Dart, no dependencies, any ImageProvider.
-version: 1.2.1
+  vertical or horizontal. Pure Dart, no dependencies, any ImageProvider or any
+  widget as the background.
+version: 1.3.0
 homepage: https://www.comapps.be
 repository: https://github.com/raphrmx/simple_parallax
 issue_tracker: https://github.com/raphrmx/simple_parallax/issues
+
+screenshots:
+  - description: Container mode, one background image drifting behind a scrolling column.
+    path: screenshots/container_mode.webp
+  - description: Item mode, where each block slides its own background as it crosses the viewport.
+    path: screenshots/item_mode.webp
+  - description: The background given as a widget rather than an image, here a gradient.
+    path: screenshots/widget_background.webp
+  - description: Either mode works sideways, the background drifting along the scrolled axis.
+    path: screenshots/sideways.webp
 
 topics:
   - parallax

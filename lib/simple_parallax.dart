@@ -8,9 +8,18 @@
 ///     [SimpleParallaxWidget] is a convenience scroll view for a list of them.
 ///
 /// Both take an [ImageProvider], so assets, network images, files and raw
-/// bytes are all supported, and both work vertically or horizontally: the
+/// bytes are all supported, and both take a `background` widget instead when the
+/// layer is not a plain image, for a gradient, a video or an image the caller
+/// configured themselves. Both work vertically or horizontally: the
 /// container takes a `scrollDirection`, and the item reads the axis of the
 /// scrollable it sits in.
+///
+/// The background can also gain scale as it travels, through `zoom`, and go
+/// soft, through `blur`. Either spreads over the whole travel, or is done by
+/// `reach` and then held, or comes `back` from there.
+///
+/// Both scroll views take a `smooth` flag, which eases the mouse wheel in and
+/// brings it to an axis a [Scrollable] otherwise leaves untouched.
 ///
 /// Both scroll views are built on slivers.
 /// [SimpleParallaxContainer.slivers] takes its content as slivers, and

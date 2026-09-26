@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'smooth_scroll.dart';
+
 /// A scroll view meant to hold `SimpleParallaxItem` blocks.
 ///
 /// This is a convenience around a [CustomScrollView] holding one [SliverList],
@@ -20,6 +22,8 @@ import 'package:flutter/widgets.dart';
 ///   position from outside.
 /// - [padding]: padding around the list of blocks.
 /// - [physics]: scroll physics to hand to the scroll view.
+/// - [smooth]: whether the mouse wheel is eased in. The view then builds its
+///   own controller, so [controller] has to be left out.
 ///
 /// ### Example:
 /// ```dart
@@ -55,8 +59,12 @@ class SimpleParallaxWidget extends StatelessWidget {
     this.controller,
     this.padding,
     this.physics,
+    this.smooth = false,
     super.key,
-  });
+  }) : assert(
+          !smooth || controller == null,
+          'smooth builds its own controller, so none can be given',
+        );
 
   /// The blocks to stack along [scrollDirection].
   final List<Widget> children;
@@ -73,14 +81,36 @@ class SimpleParallaxWidget extends StatelessWidget {
   /// Scroll physics handed to the underlying scroll view.
   final ScrollPhysics? physics;
 
+  /// Whether the mouse wheel is eased in rather than landed in one step.
+  ///
+  /// A wheel notch normally arrives on a single frame, which shows on anything
+  /// driven off the scroll position, a parallax background first of all. On a
+  /// horizontal view it also brings the wheel to an axis a [Scrollable] leaves
+  /// untouched, since a plain wheel only carries a vertical delta.
+  ///
+  /// Dragging and flinging are untouched.
+  final bool smooth;
+
   @override
   Widget build(BuildContext context) {
+    if (smooth) {
+      return SmoothScroll(
+        axis: scrollDirection,
+        builder: (BuildContext context, ScrollController controller) =>
+            _view(controller),
+      );
+    }
+    return _view(controller);
+  }
+
+  /// The scroll view itself, on whichever controller it was handed.
+  Widget _view(ScrollController? scrollController) {
     final Widget list = SliverList.list(children: children);
     final EdgeInsetsGeometry? insets = padding;
 
     return CustomScrollView(
       scrollDirection: scrollDirection,
-      controller: controller,
+      controller: scrollController,
       physics: physics,
       slivers: <Widget>[
         if (insets == null)

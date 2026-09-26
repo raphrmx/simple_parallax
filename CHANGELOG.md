@@ -1,5 +1,73 @@
 # SimpleParallax Versions
 
+## 1.3.0
+
+The background can be a widget, it can push in or go soft as it travels, and the mouse wheel works
+on either axis.
+
+### Added
+- `background` on both widgets, which takes the background layer as a widget in place of `image`. The
+  layer is laid out to fill the box the parallax hands it, so a gradient, a `Stack` of several
+  layers, a video, a shader or a `CachedNetworkImage` all work. It is also how to reach the `Image`
+  parameters the package does not forward: `loadingBuilder`, `errorBuilder` and `cacheHeight` among
+  them.
+- `zoom` on both widgets, the scale the background gains across its travel, `0` by default. A
+  negative figure runs the same range backwards, so the background starts enlarged and settles
+  instead of pushing in. It turns about the middle of the viewport rather than the middle of the
+  layer, so it leaves the drift alone and the two settings can be given independently. The scale
+  never goes below 1, which would show the page down both sides of the layer. Eight tests.
+- `blur` on both widgets, the gaussian sigma the background gains across its travel, `0` by default.
+  It reads like `zoom`, a negative figure running the same range backwards, so a background can
+  arrive soft and come into focus as well as the other way round. Only the background is filtered:
+  the content over it stays sharp. It is the one setting here that is a filter rather than a
+  transform, so the layer is blurred again on each frame it moves; the sigma is rounded to a quarter
+  of a pixel and a sigma of zero pushes no layer at all. Seven tests.
+- `reach` and `back` on both widgets, which shape where along the travel `zoom` and `blur` happen.
+  `reach` is the point they are done by, `null` by default so they spread over the whole travel;
+  `0.5` has them finished at the middle of the screen and holding there. `back` runs the range
+  backwards from that point instead, which makes a zoom in and out, or a background that comes into
+  focus as it passes the eye and goes soft again. With the sign of the effect saying which end it
+  starts from, the three cover six shapes. The drift is never shaped this way. Nine tests.
+- `smooth` on `SimpleParallaxContainer` and `SimpleParallaxWidget`. A `Scrollable` lands a wheel
+  notch on one frame, which a parallax turns into a visible step, and it reads the wheel on its own
+  axis alone, so a sideways view never moves under a plain wheel. The flag eases each notch in and
+  feeds a sideways view the delta it would otherwise drop. Dragging and flinging are untouched.
+  Seven tests.
+- Seven example screens: `ContainerCustomDemo` and `ItemCustomDemo` for the widget background,
+  `ContainerVideoDemo` and `ItemVideoDemo` drifting a looping video, `ItemZoomDemo`, which puts a
+  block zooming in above one zooming out so the sign can be read off the screen, `ItemBlurDemo`,
+  which does the same for the blur, and `ItemReachDemo`, which puts a zoom held at the middle above
+  the same zoom sent back from it. Eight tests.
+- The README previews are rendered again from the current package, and a fifth is added for the
+  widget background. They are no longer captured by hand: `example/tool/record_previews.dart` draws
+  each frame from a scroll offset it computes, and `example/tool/assemble_previews.py` turns the
+  frames into the animated WebP files. The motion is exactly regular as a result, and the loop
+  closes on itself.
+- Four screenshots for pub.dev, declared in the pubspec and rendered from the example's own
+  screens by `example/tool/record_screenshots.dart`, so one cannot show what the example does
+  not.
+- The example is rebuilt: twelve screens behind a menu, a way back over each one, inset cards that
+  leave the background visible, captions on a scrim, and `smooth` set throughout. It also shows the
+  `ScrollBehavior` a desktop needs for a mouse to drag a list at all, which the package leaves to
+  the app. Its content is the copy the README previews use, so the two show the same thing.
+
+### Fixed
+- An item's background stood still for the first and last stretch of the block being on screen. The
+  effect was measured from the middle of the block against the viewport alone, so it only ran while
+  that middle crossed, which is `viewport` of scrolling out of the `viewport + height` the block is
+  visible for. On a block half as tall as the screen that was a third of the way in and a third of
+  the way out with nothing moving. It now runs from the moment the leading edge appears to the
+  moment the trailing edge goes. The drift and the zoom both cover the whole crossing as a result,
+  and both read as stronger for the same `speed` and `zoom`.
+
+### Changed
+- `image` is now optional, and exactly one of `image` and `background` must be given, which an assert
+  checks. No constructor was added: the container still has two, one per content form, and the item
+  still has one. What the background is made of is a parameter, not a constructor name.
+- `image` is nullable, so code reading `widget.image` from the outside now has a null to handle.
+  Nothing changes at a call site.
+- `fit` and `alignment` apply to `image` only: a widget background fills the layer as it stands.
+
 ## 1.2.1
 
 Modify topic widgets to sliver in to pubspec.yaml

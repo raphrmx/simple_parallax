@@ -12,6 +12,7 @@ pubspec.lock
 # The README animations are served from GitHub by absolute URL, so they do not
 # need to travel in the archive.
 doc/
+example/tool/
 example/.dart_tool/
 example/.idea/
 example/android/
