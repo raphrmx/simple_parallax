@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import 'overlay_layer.dart';
+import 'properties.dart';
 import 'travel.dart';
 
 /// A fixed-extent block whose background image slides as the block crosses the
@@ -32,24 +34,15 @@ import 'travel.dart';
 ///   raw bytes all work.
 /// - [background]: the background layer as a widget, in place of [image].
 /// - [child]: content drawn over the background, for instance a caption.
-/// - [speed]: fraction of the available travel the background uses, from `0`
-///   (pinned) to `1` (the whole [overscan]).
-/// - [overscan]: how much larger than the item the background is drawn along
-///   the scroll axis. Must be at least `1`; at exactly `1` there is no travel,
-///   so no drift, though a [zoom] still works there. It raises the height
-///   `BoxFit.cover` fits to, so it changes the framing only where that height
-///   is what `cover` is scaling by.
+/// - [parallax]: how the background drifts, its speed and its overscan.
+/// - [zoom]: how it scales as it crosses, `null` for not at all.
+/// - [blur]: how it is blurred as it crosses, `null` for not at all.
+/// - [overlay]: a fixed tint over the background and under [child], `null` for
+///   none.
 /// - [height]: item height. Defaults to the screen height in a vertical
 ///   scrollable, and to the incoming constraints in a horizontal one.
 /// - [width]: item width. Defaults to the incoming constraints in a vertical
 ///   scrollable, and to the screen width in a horizontal one.
-/// - [zoom]: scale the background gains as the block crosses the viewport, `0`
-///   for none.
-/// - [blur]: gaussian blur in logical pixels the background gains as the block
-///   crosses the viewport, `0` for none.
-/// - [reach]: where along the crossing [zoom] and [blur] are done, `null` to
-///   spread them over the whole of it.
-/// - [back]: whether they come back from there rather than holding.
 /// - [fit]: how the background fills its layer. Applies to [image] only: a
 ///   [background] widget is laid out to fill the layer as it stands.
 ///
@@ -101,24 +94,15 @@ class SimpleParallaxItem extends StatefulWidget {
     this.image,
     this.background,
     this.child,
-    this.speed = 1.0,
-    this.overscan = 1.5,
+    this.parallax = const ParallaxProperties(),
+    this.zoom,
+    this.blur,
+    this.overlay,
     this.height,
     this.width,
-    this.zoom = 0,
-    this.blur = 0,
-    this.reach,
-    this.back = false,
     this.fit = BoxFit.cover,
     super.key,
-  })  : assert(overscan >= 1, 'overscan must be at least 1'),
-        assert(
-          reach == null || (reach >= 0 && reach <= 1),
-          'reach is a fraction of the crossing, so between 0 and 1',
-        ),
-        assert(!back || reach != null, 'back needs a reach to come back from'),
-        assert(speed >= 0 && speed <= 1, 'speed must be between 0 and 1'),
-        assert(
+  }) : assert(
           (image == null) != (background == null),
           'pass exactly one of image and background',
         );
@@ -128,21 +112,32 @@ class SimpleParallaxItem extends StatefulWidget {
 
   /// Background layer, or `null` when an [image] was given instead.
   ///
-  /// The layer is given the item extent on the cross axis and [overscan] times
-  /// it on the scrolled axis, with both axes tight, so anything that fills the
-  /// box it is handed works: a `DecoratedBox` holding a gradient, an [Image] the
-  /// caller configured, a `Stack` of several layers, a video.
+  /// The layer is given the item extent on the cross axis and the overscan
+  /// times it on the scrolled axis, with both axes tight, so anything that
+  /// fills the box it is handed works: a `DecoratedBox` holding a gradient, an
+  /// [Image] the caller configured, a `Stack` of several layers, a video.
   final Widget? background;
 
   /// Content drawn over the background.
   final Widget? child;
 
-  /// Fraction of the available travel the background uses.
-  final double speed;
+  /// How the background drifts as the block crosses the viewport.
+  final ParallaxProperties parallax;
 
-  /// How much larger than the item the background is drawn along the scroll
-  /// axis.
-  final double overscan;
+  /// How the background scales as the block crosses, `null` for not at all.
+  final ZoomProperties? zoom;
+
+  /// How the background is blurred as the block crosses, `null` for not at all.
+  ///
+  /// The layer is blurred before [zoom] scales it, so a zoom carries the blur
+  /// along with everything else.
+  final BlurProperties? blur;
+
+  /// A fixed tint over the background, `null` for none.
+  ///
+  /// It is drawn over the background and under [child], and it does not move
+  /// with the background.
+  final OverlayProperties? overlay;
 
   /// Item height, or `null` for the screen height in a vertical scrollable and
   /// the incoming constraints in a horizontal one.
@@ -151,56 +146,6 @@ class SimpleParallaxItem extends StatefulWidget {
   /// Item width, or `null` for the incoming constraints in a vertical
   /// scrollable and the screen width in a horizontal one.
   final double? width;
-
-  /// Scale the background gains across its travel, on top of the drift.
-  ///
-  /// `0` leaves it alone. A positive figure pushes the background in, `0.3`
-  /// ending thirty percent larger than it started. A negative one runs the same
-  /// range backwards: `-0.3` starts thirty percent larger and settles back, so
-  /// the background comes to rest instead of growing.
-  ///
-  /// Either way the scale never goes below `1`, which it cannot: [overscan]
-  /// pads the scrolled axis alone, so the layer is exactly as wide as the
-  /// viewport across it and anything smaller would show the page behind.
-  ///
-  /// Scaling a bitmap up softens it, and [overscan] has already scaled it once,
-  /// so a large figure on a small asset will show.
-  final double zoom;
-
-  /// Gaussian blur the background gains across its travel, in logical pixels.
-  ///
-  /// `0` leaves it alone. A positive figure starts sharp and ends at that
-  /// sigma, `8` finishing at a sigma of eight. A negative one runs the same
-  /// range backwards: `-8` starts at eight and clears as the block leaves.
-  ///
-  /// The layer is blurred before [zoom] scales it, so a zoom carries the blur
-  /// along with everything else.
-  ///
-  /// This one is a filter rather than a transform, so it costs more than the
-  /// drift and the zoom: the layer is blurred again on each frame it moves. The
-  /// sigma is rounded to a quarter of a pixel, so the filter is left alone for
-  /// changes no one can see.
-  final double blur;
-
-  /// Where along the crossing [zoom] and [blur] are done, `null` to spread them
-  /// over the whole of it.
-  ///
-  /// `0.5` is the middle of the viewport, so the effect is finished as the
-  /// block passes the eye. It then holds at its far end for the rest of the
-  /// crossing, or comes back the way it went when [back] is set.
-  ///
-  /// The drift is not shaped by this. It follows the scroll whatever is set
-  /// here, since a background that walked back up the block would read as the
-  /// list scrolling the other way.
-  final double? reach;
-
-  /// Whether [zoom] and [blur] come back from [reach] rather than holding
-  /// there.
-  ///
-  /// A zoom then pushes in and backs out again over one crossing, and a
-  /// negative blur arrives soft, clears as the block passes the eye and goes
-  /// soft again.
-  final bool back;
 
   /// How the background fills its layer. Applies to [image] only: a [background]
   /// widget fills the layer as it stands.
@@ -230,19 +175,18 @@ class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
 
     Widget background = SizedBox(
       key: _backgroundKey,
-      height: horizontal ? null : height! * widget.overscan,
-      width: horizontal ? width! * widget.overscan : null,
+      height: horizontal ? null : height! * widget.parallax.overscan,
+      width: horizontal ? width! * widget.parallax.overscan : null,
       child: layer,
     );
 
-    if (widget.blur != 0 && scrollable != null) {
+    final BlurProperties? blur = widget.blur;
+    if (blur != null && scrollable != null) {
       background = _ScrollBlur(
         scrollable: scrollable,
         itemContext: context,
         axis: axis,
-        blur: widget.blur,
-        reach: widget.reach,
-        back: widget.back,
+        blur: blur,
         child: background,
       );
     }
@@ -262,16 +206,15 @@ class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
                         scrollable: scrollable,
                         itemContext: context,
                         backgroundKey: _backgroundKey,
-                        speed: widget.speed,
+                        speed: widget.parallax.speed,
                         zoom: widget.zoom,
-                        reach: widget.reach,
-                        back: widget.back,
                         axis: axis,
                       ),
                       children: <Widget>[background],
                     ),
             ),
           ),
+          if (widget.overlay != null) OverlayLayer(widget.overlay!),
           if (widget.child != null) widget.child!,
         ],
       ),
@@ -330,17 +273,13 @@ class _ScrollBlur extends SingleChildRenderObjectWidget {
     required this.itemContext,
     required this.axis,
     required this.blur,
-    required this.reach,
-    required this.back,
     required Widget super.child,
   });
 
   final ScrollableState scrollable;
   final BuildContext itemContext;
   final Axis axis;
-  final double blur;
-  final double? reach;
-  final bool back;
+  final BlurProperties blur;
 
   @override
   _RenderScrollBlur createRenderObject(BuildContext context) =>
@@ -349,8 +288,6 @@ class _ScrollBlur extends SingleChildRenderObjectWidget {
         itemContext: itemContext,
         axis: axis,
         blur: blur,
-        reach: reach,
-        back: back,
       );
 
   @override
@@ -362,9 +299,7 @@ class _ScrollBlur extends SingleChildRenderObjectWidget {
       ..scrollable = scrollable
       ..itemContext = itemContext
       ..axis = axis
-      ..blur = blur
-      ..reach = reach
-      ..back = back;
+      ..blur = blur;
   }
 }
 
@@ -373,15 +308,11 @@ class _RenderScrollBlur extends RenderProxyBox {
     required ScrollableState scrollable,
     required BuildContext itemContext,
     required Axis axis,
-    required double blur,
-    required double? reach,
-    required bool back,
+    required BlurProperties blur,
   })  : _scrollable = scrollable,
         _itemContext = itemContext,
         _axis = axis,
-        _blur = blur,
-        _reach = reach,
-        _back = back;
+        _blur = blur;
 
   ScrollableState _scrollable;
 
@@ -409,27 +340,11 @@ class _RenderScrollBlur extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  double _blur;
+  BlurProperties _blur;
 
-  set blur(double value) {
+  set blur(BlurProperties value) {
     if (value == _blur) return;
     _blur = value;
-    markNeedsPaint();
-  }
-
-  double? _reach;
-
-  set reach(double? value) {
-    if (value == _reach) return;
-    _reach = value;
-    markNeedsPaint();
-  }
-
-  bool _back;
-
-  set back(bool value) {
-    if (value == _back) return;
-    _back = value;
     markNeedsPaint();
   }
 
@@ -462,7 +377,7 @@ class _RenderScrollBlur extends RenderProxyBox {
   @override
   void paint(PaintingContext context, Offset offset) {
     final double? progress = _progressOf(_scrollable, _itemContext, _axis);
-    final double sigma = sigmaFor(shaped(progress ?? 0, _reach, _back), _blur);
+    final double sigma = sigmaOf(_blur, progress ?? 0);
     if (sigma <= 0) {
       _filter.layer = null;
       super.paint(context, offset);
@@ -493,8 +408,6 @@ class _ParallaxFlowDelegate extends FlowDelegate {
     required this.backgroundKey,
     required this.speed,
     required this.zoom,
-    required this.reach,
-    required this.back,
     required this.axis,
   }) : super(repaint: scrollable.position);
 
@@ -502,9 +415,7 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   final BuildContext itemContext;
   final GlobalKey backgroundKey;
   final double speed;
-  final double zoom;
-  final double? reach;
-  final bool back;
+  final ZoomProperties? zoom;
   final Axis axis;
 
   bool get _horizontal => axis == Axis.horizontal;
@@ -548,11 +459,11 @@ class _ParallaxFlowDelegate extends FlowDelegate {
       0,
     );
 
-    if (zoom != 0) {
+    final double scale = scaleOf(zoom, progress);
+    if (scale != 1) {
       // Turned about the middle of the block, which is where the eye is, and
       // applied after the placement so the drift is not scaled with it.
       final Offset about = itemBox.size.center(Offset.zero) - placement;
-      final double scale = scaleFor(shaped(progress, reach, back), zoom);
       transform
         ..translateByDouble(about.dx, about.dy, 0, 1)
         ..scaleByDouble(scale, scale, 1, 1)
@@ -569,7 +480,5 @@ class _ParallaxFlowDelegate extends FlowDelegate {
       backgroundKey != oldDelegate.backgroundKey ||
       speed != oldDelegate.speed ||
       zoom != oldDelegate.zoom ||
-      reach != oldDelegate.reach ||
-      back != oldDelegate.back ||
       axis != oldDelegate.axis;
 }

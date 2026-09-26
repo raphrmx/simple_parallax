@@ -274,8 +274,7 @@ final List<_Preview> _previews = <_Preview>[
     'container_mode',
     (ScrollController c) => SimpleParallaxContainer(
       image: _photo,
-      speed: 0.3,
-      overscan: 1.6,
+      parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
       child: Column(
         children: <Widget>[
           const SizedBox(height: 10),
@@ -290,8 +289,7 @@ final List<_Preview> _previews = <_Preview>[
     (ScrollController c) => SimpleParallaxContainer(
       image: _photo,
       scrollDirection: Axis.horizontal,
-      speed: 0.3,
-      overscan: 1.6,
+      parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
       child: Row(
         children: <Widget>[
           const SizedBox(width: 8),
@@ -315,7 +313,7 @@ final List<_Preview> _previews = <_Preview>[
         SimpleParallaxItem(
           image: _photo,
           height: 210,
-          overscan: 2,
+          parallax: ParallaxProperties(overscan: 2),
           child: _caption('DAY ONE', 'The southern pass'),
         ),
         _prose(
@@ -327,8 +325,7 @@ final List<_Preview> _previews = <_Preview>[
         SimpleParallaxItem(
           image: _photo,
           height: 210,
-          overscan: 2,
-          speed: 0.45,
+          parallax: ParallaxProperties(speed: 0.45, overscan: 2),
           child: _caption('DAY TWO', 'Down to the lake'),
         ),
         _prose(
@@ -354,7 +351,7 @@ final List<_Preview> _previews = <_Preview>[
         SimpleParallaxItem(
           image: _photo,
           width: 300,
-          overscan: 2,
+          parallax: ParallaxProperties(overscan: 2),
           child: _caption('DAY ONE', 'The southern pass'),
         ),
         _prose(
@@ -365,8 +362,7 @@ final List<_Preview> _previews = <_Preview>[
         SimpleParallaxItem(
           image: _photo,
           width: 300,
-          overscan: 2,
-          speed: 0.45,
+          parallax: ParallaxProperties(speed: 0.45, overscan: 2),
           child: _caption('DAY TWO', 'Down to the lake'),
         ),
         _prose(
@@ -381,8 +377,7 @@ final List<_Preview> _previews = <_Preview>[
     'widget_background',
     (ScrollController c) => SimpleParallaxContainer(
       background: _gradient,
-      speed: 0.3,
-      overscan: 1.6,
+      parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
       child: Column(
         children: <Widget>[
           const SizedBox(height: 10),

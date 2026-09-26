@@ -22,8 +22,8 @@ import 'smooth_scroll.dart';
 ///   position from outside.
 /// - [padding]: padding around the list of blocks.
 /// - [physics]: scroll physics to hand to the scroll view.
-/// - [smooth]: whether the mouse wheel is eased in. The view then builds its
-///   own controller, so [controller] has to be left out.
+/// - [smooth]: whether the mouse wheel is eased in. The view builds its own
+///   controller to do it, so this is on unless a [controller] was given.
 ///
 /// ### Example:
 /// ```dart
@@ -59,10 +59,11 @@ class SimpleParallaxWidget extends StatelessWidget {
     this.controller,
     this.padding,
     this.physics,
-    this.smooth = false,
+    bool? smooth,
     super.key,
-  }) : assert(
-          !smooth || controller == null,
+  })  : smooth = smooth ?? controller == null,
+        assert(
+          smooth != true || controller == null,
           'smooth builds its own controller, so none can be given',
         );
 
@@ -88,7 +89,10 @@ class SimpleParallaxWidget extends StatelessWidget {
   /// horizontal view it also brings the wheel to an axis a [Scrollable] leaves
   /// untouched, since a plain wheel only carries a vertical delta.
   ///
-  /// Dragging and flinging are untouched.
+  /// On unless a [controller] was given, since the easing lives in a controller
+  /// of the view's own and there can only be one. Passing both `true` and a
+  /// controller is an error rather than a silent no-op. Dragging, flinging and
+  /// touch are untouched either way, so this is a mouse and trackpad setting.
   final bool smooth;
 
   @override

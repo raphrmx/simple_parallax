@@ -3,7 +3,8 @@
 # Simple Parallax
 
 Parallax widgets for Flutter, in pure Dart. Two modes, either axis, any `ImageProvider` or any
-widget as the background, and no dependencies beyond the Flutter SDK.
+widget as the background, and no dependencies beyond the Flutter SDK. The drift, the zoom, the blur
+and the overlay are each configured on their own.
 
 <p>
   <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp?v=3" alt="Container mode, scrolling down" width="330">
@@ -23,11 +24,9 @@ widget as the background, and no dependencies beyond the Flutter SDK.
 <sub>Container mode on the first row, item mode on the second; scrolling down on the left, sideways
 on the right. Last one: the background as a widget rather than an image.</sub>
 
-[![Build](https://img.shields.io/github/actions/workflow/status/raphrmx/simple_parallax/ci.yml?branch=main&label=build)](https://github.com/raphrmx/simple_parallax/actions/workflows/ci.yml)
-[![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=blue)](https://pub.dev/packages/simple_parallax)
-![Maintainer](https://img.shields.io/badge/Maintainer-Raphael-purple)
-[![License](https://img.shields.io/badge/Licence-MIT-blue)](/LICENSE)
-![Maintenance](https://img.shields.io/badge/Maintained-yes-success)
+[![Live demo](https://img.shields.io/badge/Live_demo-comapps.web.app-3c9a70)](https://comapps.web.app/simple_parallax/)
+[![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=0175C2)](https://pub.dev/packages/simple_parallax)
+[![Licence](https://img.shields.io/badge/Licence-MIT-5B6470)](LICENSE)
 ![Platforms](https://img.shields.io/badge/Platforms-Android,_iOS,_macOS,_Windows,_Linux,_Web-22375C.svg)
 
 ## Install
@@ -40,14 +39,13 @@ Requires Flutter 3.22 or later.
 
 ## Container mode
 
-One background drifting behind a scrolling area. `autoSpeed` derives the speed from the real scroll
-extent, so the background uses exactly the travel `overscan` gives it and never runs out of image:
+One background drifting behind a scrolling area. Nothing is required beyond the image and the
+content: the background spends exactly the travel `overscan` gives it, over the whole page, and
+never runs out of image.
 
 ```dart
 SimpleParallaxContainer(
   image: const AssetImage('assets/images/background.webp'),
-  autoSpeed: true,
-  overscan: 1.5,
   child: Column(children: items),
 );
 ```
@@ -59,18 +57,15 @@ SimpleParallaxContainer(
 | `child` | required | The scrolling content, laid out as a single box sliver. |
 | `slivers` | required | The scrolling content as slivers, on the `.slivers` constructor. |
 | `scrollDirection` | `Axis.vertical` | The axis the content scrolls and the background drifts along. |
-| `speed` | `0.3` | Background travel per pixel scrolled. Ignored when `autoSpeed` is set. |
-| `autoSpeed` | `false` | Derives the speed from the scroll extent. |
-| `overscan` | `1.5` | How much larger than the viewport the background is drawn along the scroll axis. |
+| `parallax` | `ParallaxProperties()` | How the background drifts: its `speed` and its `overscan`. |
+| `zoom` | `null` | How it scales down the page. |
+| `blur` | `null` | How it is blurred down the page. |
+| `overlay` | `null` | A fixed tint over it, under the content. |
 | `height` | `null` | Forces the viewport height instead of using the constraints. |
 | `width` | `null` | Forces the viewport width instead of using the constraints. |
 | `fit` | `BoxFit.cover` | How the background fills its layer. Applies to `image` only. |
 | `alignment` | `Alignment.center` | How the background sits inside its layer. Applies to `image` only. |
-| `zoom` | `0` | Scale the background gains across its travel. Negative runs it backwards. |
-| `blur` | `0` | Sigma the background gains across its travel. Negative runs it backwards. |
-| `reach` | `null` | Where along the travel `zoom` and `blur` are done. |
-| `back` | `false` | Whether they come back from there rather than holding. |
-| `smooth` | `false` | Eases the mouse wheel in, and brings it to a horizontal view. |
+| `smooth` | `true` | Eases the mouse wheel in, and brings it to a horizontal view. |
 
 ### Slivers
 
@@ -81,7 +76,6 @@ and other slivers can ride over the background:
 ```dart
 SimpleParallaxContainer.slivers(
   image: const AssetImage('assets/images/background.webp'),
-  autoSpeed: true,
   slivers: <Widget>[
     const SliverAppBar(title: Text('Chapters'), floating: true),
     SliverList.builder(
@@ -93,9 +87,10 @@ SimpleParallaxContainer.slivers(
 );
 ```
 
-Everything else behaves the same: the background still drifts along `scrollDirection`, and
-`autoSpeed` still reads the real scroll extent. On a long list, prefer a fixed `speed`: `autoSpeed`
-spreads the travel `overscan` allows over the whole extent, so the drift becomes imperceptible.
+Everything else behaves the same: the background still drifts along `scrollDirection`, over the real
+scroll extent. On a very long list that extent is large, so the same travel is spread thin and the
+drift becomes hard to see. Raise `overscan` to give it more room, or reach for item mode, where each
+block has a crossing of its own.
 
 ## Item mode
 
@@ -120,14 +115,12 @@ ListView(
 | `image` | one of the two | Any `ImageProvider`. |
 | `background` | one of the two | The background as a widget, when the layer is not a plain image. |
 | `child` | `null` | Content drawn over the background. |
-| `speed` | `1.0` | Fraction of the available travel used, from `0` to `1`. |
-| `overscan` | `1.5` | How much larger than the item the background is drawn along the scroll axis. |
+| `parallax` | `ParallaxProperties()` | How the background drifts: its `speed` and its `overscan`. |
+| `zoom` | `null` | How it scales as the block crosses. |
+| `blur` | `null` | How it is blurred as the block crosses. |
+| `overlay` | `null` | A fixed tint over it, under `child`. |
 | `height` | screen height, or constraints when horizontal | Item height. |
 | `width` | constraints, or screen width when horizontal | Item width. |
-| `zoom` | `0` | Scale the background gains across its travel. Negative runs it backwards. |
-| `blur` | `0` | Sigma the background gains across its travel. Negative runs it backwards. |
-| `reach` | `null` | Where along the crossing `zoom` and `blur` are done. |
-| `back` | `false` | Whether they come back from there rather than holding. |
 | `fit` | `BoxFit.cover` | How the background fills its layer. Applies to `image` only. |
 
 `SimpleParallaxWidget` is a convenience scroll view for a list of items. It is a `CustomScrollView`
@@ -159,7 +152,6 @@ SimpleParallaxContainer(
       ),
     ),
   ),
-  autoSpeed: true,
   child: Column(children: items),
 );
 ```
@@ -212,27 +204,28 @@ SimpleParallaxItem(
 
 ## Pushing the background in
 
-`speed` moves the background, `zoom` scales it. The two are independent, so either works on its own:
+`parallax` moves the background, `zoom` scales it. The two are separate objects, so either works on
+its own:
 
 ```dart
 SimpleParallaxContainer(
   image: const AssetImage('assets/images/background.webp'),
-  speed: 0.3,
-  zoom: 0.25,
+  parallax: const ParallaxProperties(speed: 0.3),
+  zoom: const ZoomProperties(0.25),
   child: Column(children: items),
 );
 ```
 
 | What you want | What you write |
 | --- | --- |
-| Drift alone | `speed: 0.3` |
-| A push-in alone | `speed: 0, zoom: 0.25` |
-| Both | `speed: 0.3, zoom: 0.25` |
-| Neither | both at `0` |
+| Drift alone | `parallax: ParallaxProperties(speed: 0.3)` |
+| A push-in alone | `parallax: ParallaxProperties(speed: 0), zoom: ZoomProperties(0.25)` |
+| Both | both, as above |
+| Neither | leave both out |
 
-`zoom` is the scale the background gains across its travel: `0.25` ends a quarter larger, `0` leaves
-it alone. It means the same thing in both modes, the container scaling across the page and an item
-across its own crossing of the viewport.
+The figure a `ZoomProperties` takes is the scale the background gains across its travel: `0.25` ends
+a quarter larger. It means the same thing in both modes, the container scaling across the page and
+an item across its own crossing of the viewport.
 
 A negative figure runs the same range backwards, so the background starts enlarged and settles
 rather than pushing in:
@@ -273,12 +266,9 @@ A portrait image of 1392x1765 in a block 927 wide shows this:
 So the lever is the shape of the block, or an image shaped more like it. Not `overscan`, and not
 `zoom`, which only multiplies whatever `cover` already decided.
 
-`zoom` does compound with all of it, though, and that is worth watching at the far end: at
-`overscan: 2` with `zoom: 0.5` the layer is drawn at three times the block extent by the time it is
-done, and a large figure will soften a modest asset.
-
-`autoSpeed` ignores `speed`, so a push-in with no drift wants `autoSpeed` left off, which is the
-default.
+The zoom does compound with all of it, though, and that is worth watching at the far end: at
+`overscan: 2` with a zoom of `0.5` the layer is drawn at three times the block extent by the time it
+is done, and a large figure will soften a modest asset.
 
 ## Softening the background
 
@@ -289,20 +279,20 @@ figure is gained across the travel, a negative one is spent across it.
 SimpleParallaxItem(
   image: const AssetImage('assets/images/background.webp'),
   height: 620,
-  blur: 16,
+  blur: const BlurProperties(16),
   child: const Center(child: Text('Chapter one')),
 );
 ```
 
-| `blur` | The background |
+| What you write | The background |
 | --- | --- |
-| `16` | Arrives sharp, leaves at a sigma of sixteen |
-| `-16` | Arrives at a sigma of sixteen, leaves sharp |
-| `0` | Never filtered at all |
+| `BlurProperties(16)` | Arrives sharp, leaves at a sigma of sixteen |
+| `BlurProperties(-16)` | Arrives at a sigma of sixteen, leaves sharp |
+| nothing | Never filtered at all |
 
-The figure is a sigma in logical pixels, not a fraction: `zoom: 0.3` means three tenths of the
-layer, `blur: 16` means sixteen pixels whatever the layer is. Sixteen is a heavy blur on a phone and
-a moderate one on a desktop, so it is worth setting per breakpoint if the page is responsive.
+The figure is a sigma in logical pixels, not a fraction: a zoom of `0.3` means three tenths of the
+layer, a blur of `16` means sixteen pixels whatever the layer is. Sixteen is a heavy blur on a phone
+and a moderate one on a desktop, so it is worth setting per breakpoint if the page is responsive.
 
 Only the background is filtered. `child` sits over it untouched, which is what makes a caption or a
 form readable over a background that is going soft.
@@ -324,15 +314,14 @@ which is the whole of one end of a `blur` given in either direction.
 
 ## Finishing before the end
 
-Left alone, `zoom` and `blur` are spread over the whole travel. `reach` packs them into the stretch
-before a point, so the effect is done there instead:
+Left alone, a zoom and a blur are spread over the whole travel. `reach` packs one into the stretch
+before a point, so it is done there instead:
 
 ```dart
 SimpleParallaxItem(
   image: const AssetImage('assets/images/background.webp'),
   height: 620,
-  zoom: 0.6,
-  reach: 0.5,
+  zoom: const ZoomProperties(0.6, reach: 0.5),
   child: const Center(child: Text('Chapter one')),
 );
 ```
@@ -340,22 +329,52 @@ SimpleParallaxItem(
 `0.5` is the middle of the screen, which is the one you want nine times in ten. What happens over
 the rest of the travel is `back`: the far end held, or the same range run backwards.
 
-With the sign of the effect saying which end it starts from, the three settings cover six shapes:
+Because each effect carries its own `reach` and `back`, a zoom running the whole way and a blur
+stopping at the middle sit in the same widget. With the sign saying which end the effect starts
+from, that covers six shapes per effect:
 
 | What you write | The background |
 | --- | --- |
-| `zoom: 0.6` | Pushes in across the whole crossing |
-| `zoom: 0.6, reach: 0.5` | Pushes in to the middle and stays there |
-| `zoom: 0.6, reach: 0.5, back: true` | Pushes in to the middle and backs out again |
-| `blur: -16` | Arrives soft and clears |
-| `blur: -16, reach: 0.5` | Arrives soft, clear from the middle on |
-| `blur: -16, reach: 0.5, back: true` | Arrives soft, sharp in passing, soft again |
+| `ZoomProperties(0.6)` | Pushes in across the whole crossing |
+| `ZoomProperties(0.6, reach: 0.5)` | Pushes in to the middle and stays there |
+| `ZoomProperties(0.6, reach: 0.5, back: true)` | Pushes in to the middle and backs out again |
+| `BlurProperties(-16)` | Arrives soft and clears |
+| `BlurProperties(-16, reach: 0.5)` | Arrives soft, clear from the middle on |
+| `BlurProperties(-16, reach: 0.5, back: true)` | Arrives soft, sharp in passing, soft again |
 
 Any other fraction moves the point: `reach: 0.3` is done a third of the way in and spends the rest
 of the crossing holding or coming back.
 
-The drift is never shaped this way. `speed` follows the scroll whatever `reach` is set to, because a
+The drift is never shaped this way. It follows the scroll whatever `reach` is set to, because a
 background walking back up the page would read as the content scrolling the other way.
+
+## A tint over the background
+
+A photo is rarely the right contrast for text on its own. `overlay` is a fixed layer of colour over
+the background and under the content, so the image is knocked back and nothing written on it is:
+
+```dart
+SimpleParallaxItem(
+  image: const AssetImage('assets/images/background.webp'),
+  height: 620,
+  overlay: const OverlayProperties.darken(0.45),
+  child: const Center(child: Text('Chapter one')),
+);
+```
+
+| What you write | What is drawn |
+| --- | --- |
+| `OverlayProperties.darken(0.45)` | Black at 45 percent |
+| `OverlayProperties.lighten(0.2)` | White at 20 percent |
+| `OverlayProperties(Color(0xFF1A237E), opacity: 0.5)` | Any colour, at any opacity |
+| `OverlayProperties.gradient(LinearGradient(...))` | A scrim that fades across the background |
+
+The gradient form is what a caption sitting at one edge wants: opaque enough to read against there,
+and gone by the other edge, so the image is not dulled where nothing is drawn over it.
+
+Fixed means fixed. It does not drift, scale or blur with the background: it stays where it is while
+the background moves under it, which is what makes it read as a treatment of the page rather than as
+part of the image.
 
 ## The mouse wheel
 
@@ -363,19 +382,22 @@ A `Scrollable` lands a wheel notch on a single frame, and it reads the wheel on 
 Both show in a parallax. The background moves in steps instead of drifting, and a sideways view does
 not move at all under a plain wheel, which carries a vertical delta and nothing else.
 
-`smooth: true` eases each notch in, and hands a sideways view the wheel it would otherwise ignore:
+`smooth` fixes both, and it is on by default, since a stepping background is what a parallax is
+there to avoid. Turn it off to get the platform behaviour back:
 
 ```dart
 SimpleParallaxContainer(
   image: const AssetImage('assets/images/background.webp'),
-  autoSpeed: true,
-  smooth: true,
+  smooth: false,
   child: Column(children: items),
 );
 ```
 
-Dragging and flinging are untouched. `SimpleParallaxWidget` takes the same flag and builds its own
-controller when it is set, so leave `controller` out there.
+Dragging, flinging and touch are untouched either way, so this is a mouse and trackpad setting.
+
+`SimpleParallaxWidget` takes the same flag, and the easing lives in a controller of its own, so it
+turns itself off when you pass a `controller`. Passing both `smooth: true` and a controller is an
+error rather than a silent no-op.
 
 One thing the package deliberately leaves alone: a mouse cannot drag a scroll view in Flutter at
 all, since `dragDevices` covers touch, stylus and trackpad. That is an app-wide decision, so it
@@ -391,7 +413,6 @@ Both modes work on either axis. The container takes a `scrollDirection`, exactly
 SimpleParallaxContainer(
   image: const AssetImage('assets/images/background.webp'),
   scrollDirection: Axis.horizontal,
-  autoSpeed: true,
   child: Row(children: items),
 );
 ```
@@ -424,15 +445,36 @@ rebuilding a single widget.
 Both scroll views are `CustomScrollView`s, so content handed over as slivers is built only as far as
 the viewport reaches.
 
+## Migrating from 1.x
+
+The settings are grouped into four objects, one per effect, so each carries its own `reach` and
+`back` instead of sharing one pair. `speed` now means the same thing in both modes: a fraction of
+the available travel, `1` spending all of it over the whole scroll. That is what `autoSpeed` used to
+do, so the flag is gone.
+
+| Before | Now |
+| --- | --- |
+| `speed: 0.4, overscan: 2` | `parallax: ParallaxProperties(speed: 0.4, overscan: 2)` |
+| `autoSpeed: true` | nothing: `speed` defaults to `1`, which is the same thing |
+| `speed: 0.3` on a container | a fraction now, not a travel per pixel. Pick one between `0` and `1` |
+| `zoom: 0.25` | `zoom: ZoomProperties(0.25)` |
+| `blur: 16` | `blur: BlurProperties(16)` |
+| `zoom: 0.6, reach: 0.5, back: true` | `zoom: ZoomProperties(0.6, reach: 0.5, back: true)` |
+| a hand-rolled scrim in `child` | `overlay: OverlayProperties.darken(0.45)` |
+
+Nothing else moves. `image`, `background`, `child`, `slivers`, `scrollDirection`, `height`, `width`,
+`fit` and `alignment` are where they were. `smooth` is too, but it now defaults to `true`; pass
+`smooth: false` to keep the old behaviour.
+
 ## Migrating from 0.1.x
 
 | Before | Now |
 | --- | --- |
 | `imagePath: 'assets/a.webp'` | `image: AssetImage('assets/a.webp')` |
 | `decal: 1.5` | `overscan: 1.5` |
-| `SimpleParallaxItem(speed: 0.3)` | `speed` is a `0..1` fraction now, default `1.0` |
+| `SimpleParallaxItem(speed: 0.3)` | `parallax: ParallaxProperties(speed: 0.3)` |
 | `SimpleParallaxItem` only inside `SimpleParallaxWidget` | works inside any scrollable |
-| `autoSpeed` needed a `GlobalKey` on your child | nothing to pass |
+| `autoSpeed` needed a `GlobalKey` on your child | gone: a `speed` of `1` is the same thing |
 
 The package is no longer a Flutter plugin: the native platform folders are gone, and so is the
 `provider` dependency.
@@ -443,10 +485,10 @@ None beyond the Flutter SDK.
 
 ## Example
 
-`example/` is one app with twelve screens: container mode and item mode, each vertical and sideways,
-the container over slivers, both directions of the zoom and both of the blur, an effect finishing at
-the middle and one sent back from it, a widget background in each mode, and a looping video behind
-each.
+`example/` is one app with thirteen screens: container mode and item mode, each vertical and
+sideways, the container over slivers, both directions of the zoom and both of the blur, an effect
+finishing at the middle and one sent back from it, the three forms of the overlay, a widget
+background in each mode, and a looping video behind each.
 
 ```sh
 cd example && flutter run

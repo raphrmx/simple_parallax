@@ -14,9 +14,11 @@
 /// container takes a `scrollDirection`, and the item reads the axis of the
 /// scrollable it sits in.
 ///
-/// The background can also gain scale as it travels, through `zoom`, and go
-/// soft, through `blur`. Either spreads over the whole travel, or is done by
-/// `reach` and then held, or comes `back` from there.
+/// Each effect is configured on an object of its own: [ParallaxProperties] for
+/// the drift, [ZoomProperties] for the scale it gains, [BlurProperties] for how
+/// soft it goes and [OverlayProperties] for a fixed tint over it. The zoom and
+/// the blur each carry their own `reach` and `back`, so one can run the whole
+/// travel while the other stops at the middle.
 ///
 /// Both scroll views take a `smooth` flag, which eases the mouse wheel in and
 /// brings it to an axis a [Scrollable] otherwise leaves untouched.
@@ -37,10 +39,12 @@
 library;
 
 import 'package:flutter/widgets.dart';
+import 'src/properties.dart';
 import 'src/simple_parallax_container.dart';
 import 'src/simple_parallax_item.dart';
 import 'src/simple_parallax_widget.dart';
 
+export 'src/properties.dart';
 export 'src/simple_parallax_container.dart';
 export 'src/simple_parallax_item.dart';
 export 'src/simple_parallax_widget.dart';

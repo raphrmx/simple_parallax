@@ -1,6 +1,6 @@
 # simple_parallax_example
 
-One app, twelve screens, reachable from a menu:
+One app, thirteen screens, reachable from a menu:
 
 | Screen | Shows |
 | --- | --- |
@@ -12,6 +12,7 @@ One app, twelve screens, reachable from a menu:
 | `ItemZoomDemo` | Two blocks at the same drift, zooming in and out |
 | `ItemBlurDemo` | The same two blocks, blurring in and out |
 | `ItemReachDemo` | An effect done by the middle, held or sent back |
+| `ItemOverlayDemo` | A fixed tint: darkened, faded by a gradient, coloured |
 | `ContainerCustomDemo` | A gradient as the background |
 | `ItemCustomDemo` | A gradient and a tinted image as backgrounds |
 | `ContainerVideoDemo` | A looping video behind the page |
@@ -24,8 +25,8 @@ The copy is the one the README previews use, so the animations and the app you r
 thing. The preview widgets are laid out separately, in `tool/record_previews.dart`, because 520x260
 needs tighter type and padding than a window does.
 
-Every screen sets `smooth: true`, so a mouse wheel eases in rather than stepping, and the sideways
-screens answer the wheel at all.
+No screen sets `smooth`: it is on by default, so a mouse wheel eases in rather than stepping, and
+the sideways screens answer the wheel at all.
 
 `_DragScrollBehavior` adds the mouse to `dragDevices` for the whole app. Flutter leaves dragging to
 touch, stylus and trackpad, which on a desktop leaves a sideways list with nothing to drag. It is an

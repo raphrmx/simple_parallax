@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_parallax/simple_parallax.dart';
+// Not exported: the overlay is an implementation detail the
+// tests reach for to find what the widgets drew.
+import 'package:simple_parallax/src/overlay_layer.dart';
 
 /// A 1x1 transparent PNG, so the tests never touch the asset bundle or the
 /// network.
@@ -95,14 +98,7 @@ void main() {
     });
 
     test('rejects an overscan below 1', () {
-      expect(
-        () => SimpleParallaxContainer(
-          image: _image,
-          overscan: 0.5,
-          child: const SizedBox(),
-        ),
-        throwsAssertionError,
-      );
+      expect(() => ParallaxProperties(overscan: 0.5), throwsAssertionError);
     });
 
     testWidgets('renders the slivers it is given', (
@@ -160,8 +156,7 @@ void main() {
         _app(
           SimpleParallaxContainer.slivers(
             image: _image,
-            speed: 0.5,
-            overscan: 2,
+            parallax: const ParallaxProperties(speed: 0.5, overscan: 2),
             slivers: <Widget>[
               SliverList.builder(
                 itemCount: 20,
@@ -190,8 +185,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             image: _image,
-            speed: 0.5,
-            overscan: 2,
+            parallax: const ParallaxProperties(speed: 0.5, overscan: 2),
             child: Column(
               children: List<Widget>.generate(
                 20,
@@ -219,8 +213,7 @@ void main() {
           SimpleParallaxContainer(
             image: _image,
             scrollDirection: Axis.horizontal,
-            speed: 0.5,
-            overscan: 2,
+            parallax: const ParallaxProperties(speed: 0.5, overscan: 2),
             child: Row(
               children: List<Widget>.generate(
                 20,
@@ -249,8 +242,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             image: _image,
-            speed: 0.5,
-            overscan: 2,
+            parallax: const ParallaxProperties(speed: 0.5, overscan: 2),
             child: Column(
               children: <Widget>[
                 SizedBox(
@@ -369,7 +361,7 @@ void main() {
               SimpleParallaxItem(
                 image: _image,
                 width: 200,
-                overscan: 2,
+                parallax: ParallaxProperties(overscan: 2),
                 child: const Text('Caption'),
               ),
               const SizedBox(width: 1000),
@@ -413,10 +405,7 @@ void main() {
     });
 
     test('rejects a speed outside 0..1', () {
-      expect(
-        () => SimpleParallaxItem(image: _image, speed: 2),
-        throwsAssertionError,
-      );
+      expect(() => ParallaxProperties(speed: 2), throwsAssertionError);
     });
   });
 
@@ -541,8 +530,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            speed: 0.5,
-            overscan: 2,
+            parallax: const ParallaxProperties(speed: 0.5, overscan: 2),
             child: Column(
               children: List<Widget>.generate(
                 20,
@@ -599,7 +587,7 @@ void main() {
               SimpleParallaxItem(
                 background: _layer,
                 width: 200,
-                overscan: 2,
+                parallax: ParallaxProperties(overscan: 2),
                 child: Text('Caption'),
               ),
               SizedBox(width: 1000),
@@ -676,7 +664,9 @@ void main() {
     testWidgets('lands the notch on one frame without it', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(_app(SimpleParallaxWidget(children: _tall())));
+      await tester.pumpWidget(
+        _app(SimpleParallaxWidget(smooth: false, children: _tall())),
+      );
 
       await _wheel(tester, const Offset(0, 120));
       await tester.pump();
@@ -724,6 +714,7 @@ void main() {
       await tester.pumpWidget(
         _app(
           SimpleParallaxWidget(
+            smooth: false,
             scrollDirection: Axis.horizontal,
             children: _wide(),
           ),
@@ -744,8 +735,7 @@ void main() {
           SimpleParallaxContainer(
             background: _layer,
             smooth: true,
-            speed: 0.5,
-            overscan: 2,
+            parallax: const ParallaxProperties(speed: 0.5, overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -756,6 +746,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.getTopLeft(find.byKey(_layerKey)).dy, lessThan(before.dy));
+    });
+
+    test('is on when nothing stands in its way', () {
+      expect(const SimpleParallaxWidget(children: <Widget>[]).smooth, isTrue);
+    });
+
+    test('stands down for a controller rather than fight it', () {
+      final SimpleParallaxWidget view = SimpleParallaxWidget(
+        controller: ScrollController(),
+        children: const <Widget>[],
+      );
+
+      expect(view.smooth, isFalse);
     });
 
     test('refuses a controller it cannot make smooth', () {
@@ -778,9 +781,8 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            zoom: 0.5,
-            speed: 0.3,
-            overscan: 2,
+            zoom: const ZoomProperties(0.5),
+            parallax: const ParallaxProperties(speed: 0.3, overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -800,9 +802,8 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            zoom: 0.5,
-            speed: 0.3,
-            overscan: 2,
+            zoom: const ZoomProperties(0.5),
+            parallax: const ParallaxProperties(speed: 0.3, overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -826,8 +827,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            speed: 0.3,
-            overscan: 2,
+            parallax: const ParallaxProperties(speed: 0.3, overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -848,9 +848,8 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            zoom: 0.5,
-            speed: 0.3,
-            overscan: 2,
+            zoom: const ZoomProperties(0.5),
+            parallax: const ParallaxProperties(speed: 0.3, overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -879,8 +878,8 @@ void main() {
               SimpleParallaxItem(
                 background: _layer,
                 height: 200,
-                overscan: 2,
-                zoom: 0.5,
+                parallax: ParallaxProperties(overscan: 2),
+                zoom: ZoomProperties(0.5),
               ),
               SizedBox(height: 1200),
             ],
@@ -906,9 +905,8 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            zoom: -0.5,
-            speed: 0.3,
-            overscan: 2,
+            zoom: const ZoomProperties(-0.5),
+            parallax: const ParallaxProperties(speed: 0.3, overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -937,9 +935,8 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            zoom: -0.5,
-            speed: 0.3,
-            overscan: 2,
+            zoom: const ZoomProperties(-0.5),
+            parallax: const ParallaxProperties(speed: 0.3, overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -975,7 +972,7 @@ void main() {
               SimpleParallaxItem(
                 background: _layer,
                 height: 400,
-                overscan: 2,
+                parallax: ParallaxProperties(overscan: 2),
               ),
               SizedBox(height: 1400),
             ],
@@ -1042,7 +1039,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            blur: 12,
+            blur: const BlurProperties(12),
             child: Column(children: _tall()),
           ),
         ),
@@ -1064,7 +1061,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            blur: -12,
+            blur: const BlurProperties(-12),
             child: Column(children: _tall()),
           ),
         ),
@@ -1085,7 +1082,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            blur: 12,
+            blur: const BlurProperties(12),
             child: Column(children: _tall()),
           ),
         ),
@@ -1109,7 +1106,11 @@ void main() {
           ListView(
             children: <Widget>[
               const SizedBox(height: 600),
-              SimpleParallaxItem(background: _layer, height: 400, blur: blur),
+              SimpleParallaxItem(
+                background: _layer,
+                height: 400,
+                blur: BlurProperties(blur),
+              ),
               const SizedBox(height: 1400),
             ],
           ),
@@ -1155,7 +1156,11 @@ void main() {
         _app(
           ListView(
             children: const <Widget>[
-              SimpleParallaxItem(background: _layer, height: 400, blur: 10),
+              SimpleParallaxItem(
+                background: _layer,
+                height: 400,
+                blur: BlurProperties(10),
+              ),
               SizedBox(height: 1400),
             ],
           ),
@@ -1176,9 +1181,8 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            zoom: 0.5,
-            reach: 0.5,
-            overscan: 2,
+            zoom: const ZoomProperties(0.5, reach: 0.5),
+            parallax: const ParallaxProperties(overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -1212,8 +1216,7 @@ void main() {
               SimpleParallaxItem(
                 background: _layer,
                 height: 400,
-                blur: 20,
-                reach: 0.5,
+                blur: BlurProperties(20, reach: 0.5),
               ),
               SizedBox(height: 1400),
             ],
@@ -1245,10 +1248,8 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            zoom: 0.5,
-            reach: 0.5,
-            back: true,
-            overscan: 2,
+            zoom: const ZoomProperties(0.5, reach: 0.5, back: true),
+            parallax: const ParallaxProperties(overscan: 2),
             child: Column(children: _tall()),
           ),
         ),
@@ -1278,9 +1279,7 @@ void main() {
         _app(
           SimpleParallaxContainer(
             background: _layer,
-            blur: -16,
-            reach: 0.5,
-            back: true,
+            blur: const BlurProperties(-16, reach: 0.5, back: true),
             child: Column(children: _tall()),
           ),
         ),
@@ -1310,9 +1309,7 @@ void main() {
               SimpleParallaxItem(
                 background: _layer,
                 height: 400,
-                blur: 20,
-                reach: 0.5,
-                back: true,
+                blur: BlurProperties(20, reach: 0.5, back: true),
               ),
               SizedBox(height: 1400),
             ],
@@ -1346,10 +1343,8 @@ void main() {
               SimpleParallaxItem(
                 background: _layer,
                 height: 400,
-                speed: 0,
-                zoom: 0.5,
-                reach: 0.5,
-                back: true,
+                parallax: ParallaxProperties(speed: 0),
+                zoom: ZoomProperties(0.5, reach: 0.5, back: true),
               ),
               SizedBox(height: 1400),
             ],
@@ -1376,25 +1371,223 @@ void main() {
     });
 
     test('refuses a reach outside the travel', () {
-      expect(
-        () => SimpleParallaxItem(background: _layer, reach: 1.5),
-        throwsAssertionError,
-      );
-      expect(
-        () => SimpleParallaxContainer(
-          background: _layer,
-          reach: -1,
-          child: const SizedBox(),
-        ),
-        throwsAssertionError,
-      );
+      expect(() => ZoomProperties(0.5, reach: 1.5), throwsAssertionError);
+      expect(() => BlurProperties(8, reach: -1), throwsAssertionError);
     });
 
     test('refuses a way back from nowhere', () {
-      expect(
-        () => SimpleParallaxItem(background: _layer, back: true),
-        throwsAssertionError,
+      expect(() => ZoomProperties(0.5, back: true), throwsAssertionError);
+      expect(() => BlurProperties(8, back: true), throwsAssertionError);
+    });
+  });
+
+  group('the drift', () {
+    /// How far the background has moved from where it started.
+    double moved(WidgetTester tester, double from) =>
+        from - tester.getTopLeft(find.byKey(_layerKey)).dy;
+
+    Future<void> pumpPage(WidgetTester tester, double speed) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            parallax: ParallaxProperties(speed: speed, overscan: 2),
+            child: Column(children: _tall()),
+          ),
+        ),
       );
+    }
+
+    testWidgets('spends exactly its travel over the whole scroll', (
+      WidgetTester tester,
+    ) async {
+      await pumpPage(tester, 1);
+      final double atRest = tester.getTopLeft(find.byKey(_layerKey)).dy;
+
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      // An overscan of 2 over a 600 viewport is 600 of travel.
+      expect(moved(tester, atRest), moreOrLessEquals(600, epsilon: 0.01));
+    });
+
+    testWidgets('spends the fraction it is given and no more', (
+      WidgetTester tester,
+    ) async {
+      await pumpPage(tester, 0.5);
+      final double atRest = tester.getTopLeft(find.byKey(_layerKey)).dy;
+
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(moved(tester, atRest), moreOrLessEquals(300, epsilon: 0.01));
+    });
+
+    testWidgets('pins the background at zero', (WidgetTester tester) async {
+      await pumpPage(tester, 0);
+      final double atRest = tester.getTopLeft(find.byKey(_layerKey)).dy;
+
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(moved(tester, atRest), 0);
+    });
+  });
+
+  group('the overlay', () {
+    /// The decoration the overlay draws, whichever mode built it.
+    BoxDecoration decoration(WidgetTester tester) => tester
+        .widget<DecoratedBox>(
+          find.descendant(
+            of: find.byType(OverlayLayer),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .decoration as BoxDecoration;
+
+    testWidgets('draws nothing when there is none', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      expect(find.byType(OverlayLayer), findsNothing);
+    });
+
+    testWidgets('darkens the page at the opacity it is given', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            overlay: const OverlayProperties.darken(0.4),
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      expect(decoration(tester).color, const Color(0xFF000000));
+      expect(
+        tester
+            .widget<Opacity>(
+              find.descendant(
+                of: find.byType(OverlayLayer),
+                matching: find.byType(Opacity),
+              ),
+            )
+            .opacity,
+        0.4,
+      );
+    });
+
+    testWidgets('lightens it the other way', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            overlay: const OverlayProperties.lighten(0.2),
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      expect(decoration(tester).color, const Color(0xFFFFFFFF));
+    });
+
+    testWidgets('takes a gradient for a scrim', (WidgetTester tester) async {
+      const LinearGradient scrim = LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: <Color>[Color(0xCC000000), Color(0x00000000)],
+      );
+
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: const <Widget>[
+              SimpleParallaxItem(
+                background: _layer,
+                height: 400,
+                overlay: OverlayProperties.gradient(scrim),
+              ),
+              SizedBox(height: 1400),
+            ],
+          ),
+        ),
+      );
+
+      expect(decoration(tester).gradient, scrim);
+      expect(decoration(tester).color, isNull);
+    });
+
+    testWidgets('sits over the background and under the content', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: const <Widget>[
+              SimpleParallaxItem(
+                background: _layer,
+                height: 400,
+                overlay: OverlayProperties.darken(0.3),
+                child: Center(child: Text('Chapter one')),
+              ),
+              SizedBox(height: 1400),
+            ],
+          ),
+        ),
+      );
+
+      final Stack stack = tester.widget<Stack>(
+        find
+            .descendant(
+              of: find.byType(SimpleParallaxItem),
+              matching: find.byType(Stack),
+            )
+            .first,
+      );
+
+      expect(stack.children.length, 3);
+      expect(stack.children[1], isA<OverlayLayer>());
+      expect(stack.children.last, isA<Center>());
+    });
+
+    testWidgets('stays put while the background moves under it', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            overlay: const OverlayProperties.darken(0.3),
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      final Rect before = tester.getRect(find.byType(OverlayLayer));
+      final double layerBefore = tester.getTopLeft(find.byKey(_layerKey)).dy;
+
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(
+        tester.getTopLeft(find.byKey(_layerKey)).dy,
+        lessThan(layerBefore),
+      );
+      expect(tester.getRect(find.byType(OverlayLayer)), before);
     });
   });
 }

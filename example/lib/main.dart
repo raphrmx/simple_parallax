@@ -86,7 +86,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Simple Parallax',
+      title: 'Simple Parallax v2',
       debugShowCheckedModeBanner: false,
       scrollBehavior: scrollBehavior,
       theme: theme,
@@ -122,7 +122,7 @@ class _Menu extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
           children: <Widget>[
             const Text(
-              'Simple Parallax',
+              'Simple Parallax v2',
               style: TextStyle(
                 fontSize: 34,
                 fontWeight: FontWeight.w700,
@@ -131,7 +131,9 @@ class _Menu extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Two modes, either axis, any background.',
+              'Two modes, either axis, any image or any widget as the '
+              'background. The drift, the zoom, the blur and the overlay are '
+              'each set on their own.',
               style: TextStyle(fontSize: 15, color: Color(0x99FFFFFF)),
             ),
             const SizedBox(height: 28),
@@ -182,6 +184,12 @@ class _Menu extends StatelessWidget {
               'Stopping at the middle',
               'An effect that is done halfway, held or sent back',
               const ItemReachDemo(),
+            ),
+            _entry(
+              context,
+              'A tint over the image',
+              'A fixed overlay, darkened, tinted or faded',
+              const ItemOverlayDemo(),
             ),
             _entry(
               context,
@@ -543,7 +551,7 @@ class _Prose extends StatelessWidget {
 
 /// Container mode: one background drifting behind a scrolling column.
 ///
-/// `autoSpeed` derives the speed from the real scroll extent, so the background
+/// A speed of `1` spends the whole travel over the whole page, so the background
 /// uses exactly the travel `overscan` gives it and never runs out of image.
 class ContainerVerticalDemo extends StatelessWidget {
   /// Creates the vertical container demo.
@@ -554,9 +562,7 @@ class ContainerVerticalDemo extends StatelessWidget {
     return _Screen(
       child: SimpleParallaxContainer(
         image: _background,
-        speed: 0.25,
-        overscan: 1.6,
-        smooth: true,
+        parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: Column(
@@ -585,9 +591,7 @@ class ContainerHorizontalDemo extends StatelessWidget {
       child: SimpleParallaxContainer(
         image: _background,
         scrollDirection: Axis.horizontal,
-        autoSpeed: true,
-        overscan: 2,
-        smooth: true,
+        parallax: const ParallaxProperties(overscan: 2),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
@@ -616,9 +620,7 @@ class ContainerSliversDemo extends StatelessWidget {
     return _Screen(
       child: SimpleParallaxContainer.slivers(
         image: _background,
-        autoSpeed: true,
-        overscan: 2,
-        smooth: true,
+        parallax: const ParallaxProperties(overscan: 2),
         slivers: <Widget>[
           const SliverAppBar(
             title: Text('Slivers'),
@@ -650,7 +652,6 @@ class ItemVerticalDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _Screen(
       child: SimpleParallaxWidget(
-        smooth: true,
         children: <Widget>[
           SizedBox(
             height: 230,
@@ -663,7 +664,7 @@ class ItemVerticalDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 430,
-            overscan: 2,
+            parallax: ParallaxProperties(overscan: 2),
             child: _Caption('DAY ONE', 'The southern pass'),
           ),
           SizedBox(
@@ -677,8 +678,7 @@ class ItemVerticalDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 430,
-            overscan: 2,
-            speed: 0.4,
+            parallax: ParallaxProperties(speed: 0.4, overscan: 2),
             child: _Caption('DAY TWO', 'Down to the lake'),
           ),
           SizedBox(
@@ -708,7 +708,6 @@ class ItemHorizontalDemo extends StatelessWidget {
     return const _Screen(
       child: SimpleParallaxWidget(
         scrollDirection: Axis.horizontal,
-        smooth: true,
         children: <Widget>[
           SizedBox(
             width: 340,
@@ -721,7 +720,7 @@ class ItemHorizontalDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             width: 380,
-            overscan: 2,
+            parallax: ParallaxProperties(overscan: 2),
             child: _Caption('DAY ONE', 'The southern pass'),
           ),
           SizedBox(
@@ -735,8 +734,7 @@ class ItemHorizontalDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             width: 380,
-            overscan: 2,
-            speed: 0.4,
+            parallax: ParallaxProperties(speed: 0.4, overscan: 2),
             child: _Caption('DAY TWO', 'Down to the lake'),
           ),
           SizedBox(
@@ -769,7 +767,6 @@ class ItemZoomDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _Screen(
       child: SimpleParallaxWidget(
-        smooth: true,
         children: <Widget>[
           _Screenful(
             child: _Prose(
@@ -782,9 +779,8 @@ class ItemZoomDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 620,
-            overscan: 1.6,
-            speed: 0,
-            zoom: 0.9,
+            parallax: ParallaxProperties(speed: 0, overscan: 1.6),
+            zoom: ZoomProperties(0.9),
             child: _Caption('ZOOM 0.9', 'It pushes in'),
           ),
           _Screenful(
@@ -797,9 +793,8 @@ class ItemZoomDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 620,
-            overscan: 1.6,
-            speed: 0,
-            zoom: -0.9,
+            parallax: ParallaxProperties(speed: 0, overscan: 1.6),
+            zoom: ZoomProperties(-0.9),
             child: _Caption('ZOOM -0.9', 'It comes to rest'),
           ),
           _Screenful(
@@ -828,7 +823,6 @@ class ItemBlurDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _Screen(
       child: SimpleParallaxWidget(
-        smooth: true,
         children: <Widget>[
           _Screenful(
             child: _Prose(
@@ -841,9 +835,8 @@ class ItemBlurDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 620,
-            overscan: 1.6,
-            speed: 0.5,
-            blur: 16,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            blur: BlurProperties(16),
             child: _Caption('BLUR 16', 'It softens'),
           ),
           _Screenful(
@@ -856,9 +849,8 @@ class ItemBlurDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 620,
-            overscan: 1.6,
-            speed: 0.5,
-            blur: -16,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            blur: BlurProperties(-16),
             child: _Caption('BLUR -16', 'It sharpens'),
           ),
           _Screenful(
@@ -888,7 +880,6 @@ class ItemReachDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _Screen(
       child: SimpleParallaxWidget(
-        smooth: true,
         children: <Widget>[
           _Screenful(
             child: _Prose(
@@ -901,10 +892,8 @@ class ItemReachDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 620,
-            overscan: 1.6,
-            speed: 0.5,
-            zoom: 0.6,
-            reach: 0.5,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            zoom: ZoomProperties(0.6, reach: 0.5),
             child: _Caption('ZOOM 0.6, REACH 0.5', 'In, then held'),
           ),
           _Screenful(
@@ -917,11 +906,8 @@ class ItemReachDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 620,
-            overscan: 1.6,
-            speed: 0.5,
-            zoom: 0.6,
-            reach: 0.5,
-            back: true,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            zoom: ZoomProperties(0.6, reach: 0.5, back: true),
             child: _Caption('BACK', 'In, then out'),
           ),
           _Screenful(
@@ -934,11 +920,8 @@ class ItemReachDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 620,
-            overscan: 1.6,
-            speed: 0.5,
-            blur: -16,
-            reach: 0.5,
-            back: true,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            blur: BlurProperties(-16, reach: 0.5, back: true),
             child: _Caption('BLUR -16, BACK', 'Sharp in passing'),
           ),
           _Screenful(
@@ -947,6 +930,85 @@ class ItemReachDemo extends StatelessWidget {
               'Only the zoom and the blur are shaped. A background that walked '
                   'back up the block would read as the list scrolling the '
                   'other way.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The three forms of `overlay`, one under the other.
+///
+/// The overlay is fixed: it stays where it is while the background drifts under
+/// it, and it is drawn under the block content, so the captions here sit at full
+/// strength over a photo that has been knocked back.
+class ItemOverlayDemo extends StatelessWidget {
+  /// Creates the overlay demo.
+  const ItemOverlayDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const _Screen(
+      child: SimpleParallaxWidget(
+        children: <Widget>[
+          _Screenful(
+            child: _Prose(
+              'Knocking the image back',
+              'A photo is rarely the right contrast for text on its own. An '
+                  'overlay is a fixed layer of colour over it, under whatever '
+                  'the block draws. Scroll on.',
+            ),
+          ),
+          SimpleParallaxItem(
+            image: _background,
+            height: 520,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            overlay: OverlayProperties.darken(0.45),
+            child: _Caption('DARKEN 0.45', 'Black at nearly a half'),
+          ),
+          _Screenful(
+            child: _Prose(
+              'Or only where it is needed',
+              'A gradient dulls the image where the text goes and leaves the '
+                  'rest alone. This one darkens the top; the caption brings '
+                  'its own scrim at the bottom.',
+            ),
+          ),
+          SimpleParallaxItem(
+            image: _background,
+            height: 520,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            overlay: OverlayProperties.gradient(
+              LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.center,
+                colors: <Color>[Color(0xCC000000), Color(0x00000000)],
+              ),
+            ),
+            child: _Caption('GRADIENT', 'Dark at the top only'),
+          ),
+          _Screenful(
+            child: _Prose(
+              'Or a colour of your own',
+              'Any colour works, and the opacity is a parameter of its own, so '
+                  'a brand colour can be laid over the photo without working '
+                  'out an alpha channel by hand.',
+            ),
+          ),
+          SimpleParallaxItem(
+            image: _background,
+            height: 520,
+            parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
+            overlay: OverlayProperties(Color(0xFF1A237E), opacity: 0.5),
+            child: _Caption('COLOUR', 'Indigo at a half'),
+          ),
+          _Screenful(
+            child: _Prose(
+              'It does not move',
+              'The background drifts under the overlay while the overlay stays '
+                  'where it is. That is what makes it read as a treatment of '
+                  'the page rather than as part of the photo.',
             ),
           ),
         ],
@@ -981,9 +1043,7 @@ class ContainerCustomDemo extends StatelessWidget {
             ),
           ),
         ),
-        speed: 0.25,
-        overscan: 1.6,
-        smooth: true,
+        parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: Column(
@@ -1011,7 +1071,6 @@ class ItemCustomDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _Screen(
       child: SimpleParallaxWidget(
-        smooth: true,
         children: <Widget>[
           SizedBox(
             height: 230,
@@ -1023,7 +1082,7 @@ class ItemCustomDemo extends StatelessWidget {
           ),
           SimpleParallaxItem(
             height: 430,
-            overscan: 2,
+            parallax: ParallaxProperties(overscan: 2),
             background: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1045,7 +1104,7 @@ class ItemCustomDemo extends StatelessWidget {
           ),
           SimpleParallaxItem(
             height: 430,
-            overscan: 2,
+            parallax: ParallaxProperties(overscan: 2),
             background: ColorFiltered(
               colorFilter: ColorFilter.mode(
                 Color(0x99311B92),
@@ -1082,9 +1141,7 @@ class ContainerVideoDemo extends StatelessWidget {
     return _Screen(
       child: SimpleParallaxContainer(
         background: const _VideoBackground(),
-        speed: 0.25,
-        overscan: 1.6,
-        smooth: true,
+        parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: Column(
@@ -1111,7 +1168,6 @@ class ItemVideoDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _Screen(
       child: SimpleParallaxWidget(
-        smooth: true,
         children: <Widget>[
           SizedBox(
             height: 230,
@@ -1123,7 +1179,7 @@ class ItemVideoDemo extends StatelessWidget {
           ),
           SimpleParallaxItem(
             height: 470,
-            overscan: 2,
+            parallax: ParallaxProperties(overscan: 2),
             background: _VideoBackground(),
             child: _Caption('DAY ONE', 'The southern pass'),
           ),
@@ -1138,7 +1194,7 @@ class ItemVideoDemo extends StatelessWidget {
           SimpleParallaxItem(
             image: _background,
             height: 430,
-            overscan: 2,
+            parallax: ParallaxProperties(overscan: 2),
             child: _Caption('DAY TWO', 'Down to the lake'),
           ),
           SizedBox(

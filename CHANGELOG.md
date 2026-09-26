@@ -1,5 +1,37 @@
 # SimpleParallax Versions
 
+## 2.0.0
+
+Every effect is configured on its own object, and a fixed overlay joins them.
+
+### Added
+- `ParallaxProperties`, `ZoomProperties`, `BlurProperties` and `OverlayProperties`, one per effect.
+  Each carries what belongs to it, so a zoom running the whole way and a blur stopping at the middle
+  now sit in the same widget. In 1.3.0 `reach` and `back` were shared, which made that impossible.
+- `overlay` on both widgets, a fixed layer of colour over the background and under the content. It
+  does not drift, scale or blur with the background: it stays put while the background moves under
+  it. `OverlayProperties.darken` and `.lighten` take an opacity, the default constructor takes any
+  colour, and `.gradient` takes a gradient for a scrim that fades across the image. Six tests.
+- `ItemOverlayDemo`, a thirteenth example screen showing the three forms one under the other.
+
+### Changed
+- `speed` means the same thing in both modes: the fraction of the available travel the background
+  uses, from `0` to `1`. It used to be a travel per pixel scrolled on the container and a fraction
+  on the item, under one name. Three tests.
+- `zoom` and `blur` are nullable, so `null` is off and there is no longer a figure that means
+  nothing.
+- `smooth` defaults to `true` on both scroll views. A wheel notch landing on one frame is exactly
+  what shows on a parallax background, so the flag was set on every screen of the example and on
+  every sample in the README. On `SimpleParallaxWidget` it turns itself off when a `controller` is
+  given, since the easing lives in a controller of the view's own; passing both is still an error.
+  Pass `smooth: false` for the old behaviour.
+
+### Removed
+- `autoSpeed`. A `speed` of `1`, which is the default, spends the whole travel over the whole
+  scroll, which is exactly what the flag did.
+- The flat `speed`, `overscan`, `zoom`, `blur`, `reach` and `back` parameters, replaced by the four
+  objects above. The README has a migration table.
+
 ## 1.3.0
 
 The background can be a widget, it can push in or go soft as it travels, and the mouse wheel works

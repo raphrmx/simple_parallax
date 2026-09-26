@@ -5,9 +5,30 @@
 /// same, so they are worked out in one place.
 library;
 
+import 'properties.dart';
+
 /// Step the blur sigma is rounded to, so the filter is rebuilt only when it
 /// changes visibly.
-const double blurStep = 0.25;
+const double _blurStep = 0.25;
+
+/// The scale [zoom] draws the background at, [progress] of the way along its
+/// travel. `1` when there is no zoom.
+double scaleOf(ZoomProperties? zoom, double progress) {
+  if (zoom == null || zoom.amount == 0) return 1;
+  final double at = _shaped(progress, zoom.reach, zoom.back);
+  final double amount = zoom.amount;
+  return 1 + amount.abs() * (amount > 0 ? at : 1 - at);
+}
+
+/// The sigma [blur] filters the background with, [progress] of the way along
+/// its travel. `0` when there is no blur.
+double sigmaOf(BlurProperties? blur, double progress) {
+  if (blur == null || blur.sigma == 0) return 0;
+  final double at = _shaped(progress, blur.reach, blur.back);
+  final double amount = blur.sigma;
+  final double sigma = amount.abs() * (amount > 0 ? at : 1 - at);
+  return (sigma / _blurStep).roundToDouble() * _blurStep;
+}
 
 /// [progress] shaped by an effect that reaches its far end at [reach] and
 /// either holds there or comes [back].
@@ -16,30 +37,9 @@ const double blurStep = 0.25;
 /// end of the travel to the other. Anything else packs it into the stretch
 /// before that point: `0.5` has it finished by the middle, and what follows is
 /// either the far end held, or the same range run backwards.
-double shaped(double progress, double? reach, bool back) {
+double _shaped(double progress, double? reach, bool back) {
   if (reach == null || reach >= 1) return progress;
   if (reach <= 0) return back ? 1 - progress : 1;
   if (progress <= reach) return progress / reach;
   return back ? (1 - progress) / (1 - reach) : 1;
-}
-
-/// The scale a background of [zoom] is drawn at, [progress] of the way along
-/// its travel.
-///
-/// A negative zoom reads the same range from the other end, so the scale stays
-/// at or above `1` whichever way it is given.
-double scaleFor(double progress, double zoom) {
-  if (zoom == 0) return 1;
-  return 1 + zoom.abs() * (zoom > 0 ? progress : 1 - progress);
-}
-
-/// The sigma a background of [blur] is filtered with, [progress] of the way
-/// along its travel, rounded to [blurStep].
-///
-/// A negative blur reads the same range from the other end, so the background
-/// arrives soft and clears rather than the other way round.
-double sigmaFor(double progress, double blur) {
-  if (blur == 0) return 0;
-  final double sigma = blur.abs() * (blur > 0 ? progress : 1 - progress);
-  return (sigma / blurStep).roundToDouble() * blurStep;
 }
