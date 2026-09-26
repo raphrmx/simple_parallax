@@ -1,5 +1,12 @@
 # SimpleParallax Versions
 
+## 2.0.1
+
+### Changed
+
+- The README badge row carries the maintainer again, and a licence badge in a colour of its own
+  rather than the grey shields puts in every label. Nothing about the library changed.
+
 ## 2.0.0
 
 Every effect is configured on its own object, and a fixed overlay joins them.

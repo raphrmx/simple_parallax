@@ -1,5 +1,3 @@
-<a alt="ComApps Logo" href="https://comapps.be" target="_blank" rel="noreferrer"><img src="https://www.comapps.be/wp-content/uploads/2026/09/CompleteLogoHorizontalMini.png" style="margin: 15px"></a>
-
 # Simple Parallax
 
 Parallax widgets for Flutter, in pure Dart. Two modes, either axis, any `ImageProvider` or any
@@ -26,7 +24,8 @@ on the right. Last one: the background as a widget rather than an image.</sub>
 
 [![Live demo](https://img.shields.io/badge/Live_demo-comapps.web.app-3c9a70)](https://comapps.web.app/simple_parallax/)
 [![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=0175C2)](https://pub.dev/packages/simple_parallax)
-[![Licence](https://img.shields.io/badge/Licence-MIT-5B6470)](LICENSE)
+![Maintainer](https://img.shields.io/badge/Maintainer-Raphael_Vrient-733d90)
+[![Licence](https://img.shields.io/badge/Licence-MIT-8C6A3F)](LICENSE)
 ![Platforms](https://img.shields.io/badge/Platforms-Android,_iOS,_macOS,_Windows,_Linux,_Web-22375C.svg)
 
 ## Install
