@@ -269,6 +269,96 @@ void main() {
       expect(tester.getTopLeft(find.byType(Image).first), before);
     });
 
+    testWidgets('ignores a scrollable nested the same way', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            parallax: const ParallaxProperties(speed: 0.5, overscan: 2),
+            child: Column(
+              children: <Widget>[
+                SizedBox(
+                  height: 200,
+                  child: ListView(
+                    children: List<Widget>.generate(
+                      20,
+                      (int i) =>
+                          SizedBox(height: 100, child: Text('Nested $i')),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2000),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final Offset before = tester.getTopLeft(find.byKey(_layerKey));
+      await tester.drag(find.text('Nested 0'), const Offset(0, -150));
+      await tester.pump();
+
+      expect(tester.getTopLeft(find.byKey(_layerKey)), before);
+    });
+
+    testWidgets('follows content that grows without being scrolled', (
+      WidgetTester tester,
+    ) async {
+      Widget page(int count) => _app(
+            SimpleParallaxContainer(
+              background: _layer,
+              parallax: const ParallaxProperties(overscan: 2),
+              child: Column(
+                children: List<Widget>.generate(
+                  count,
+                  (int i) => SizedBox(height: 100, child: Text('Item $i')),
+                ),
+              ),
+            ),
+          );
+
+      await tester.pumpWidget(page(20));
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+      final double atEnd = tester.getTopLeft(find.byKey(_layerKey)).dy;
+
+      // Twice the content with the view where it was: no longer at the end, so
+      // the background has to come back part of the way.
+      await tester.pumpWidget(page(40));
+      await tester.pump();
+
+      expect(tester.getTopLeft(find.byKey(_layerKey)).dy, greaterThan(atEnd));
+    });
+
+    testWidgets('takes a new speed without waiting for a scroll', (
+      WidgetTester tester,
+    ) async {
+      Widget page(double speed) => _app(
+            SimpleParallaxContainer(
+              background: _layer,
+              parallax: ParallaxProperties(speed: speed, overscan: 2),
+              child: Column(children: _tall()),
+            ),
+          );
+
+      await tester.pumpWidget(page(1));
+      final double atRest = tester.getTopLeft(find.byKey(_layerKey)).dy;
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      await tester.pumpWidget(page(0.5));
+
+      // Half of the 600 of travel an overscan of 2 gives a 600 viewport.
+      expect(
+        atRest - tester.getTopLeft(find.byKey(_layerKey)).dy,
+        moreOrLessEquals(300, epsilon: 0.01),
+      );
+    });
+
     testWidgets('lets a scroll notification keep bubbling', (
       WidgetTester tester,
     ) async {
@@ -725,6 +815,56 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_position(tester).pixels, 0);
+    });
+
+    testWidgets('hands the wheel to the page once a horizontal view is done', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SizedBox(
+                height: 200,
+                child: SimpleParallaxWidget(
+                  scrollDirection: Axis.horizontal,
+                  smooth: true,
+                  children: _wide(),
+                ),
+              ),
+              ..._tall(),
+            ],
+          ),
+        ),
+      );
+
+      final ScrollPosition page =
+          (tester.state(find.byType(Scrollable).first) as ScrollableState)
+              .position;
+      final ScrollPosition row = (tester.state(
+        find.descendant(
+          of: find.byType(SimpleParallaxWidget),
+          matching: find.byType(Scrollable),
+        ),
+      ) as ScrollableState)
+          .position;
+
+      Future<void> wheel() async {
+        final TestPointer pointer = TestPointer(1, PointerDeviceKind.mouse);
+        final Offset over = tester.getCenter(find.byType(SimpleParallaxWidget));
+        await tester.sendEventToBinding(pointer.hover(over));
+        await tester.sendEventToBinding(pointer.scroll(const Offset(0, 120)));
+        await tester.pumpAndSettle();
+      }
+
+      await wheel();
+      expect(row.pixels, 120);
+      expect(page.pixels, 0);
+
+      row.jumpTo(row.maxScrollExtent);
+      await tester.pump();
+      await wheel();
+      expect(page.pixels, 120);
     });
 
     testWidgets('drives the background of a container', (

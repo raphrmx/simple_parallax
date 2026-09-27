@@ -88,7 +88,7 @@ import 'travel.dart';
 ///   ),
 /// );
 /// ```
-class SimpleParallaxItem extends StatefulWidget {
+class SimpleParallaxItem extends StatelessWidget {
   /// Creates a parallax item, given either an [image] or a [background].
   const SimpleParallaxItem({
     this.image,
@@ -152,13 +152,6 @@ class SimpleParallaxItem extends StatefulWidget {
   final BoxFit fit;
 
   @override
-  State<SimpleParallaxItem> createState() => _SimpleParallaxItemState();
-}
-
-class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
-  final GlobalKey _backgroundKey = GlobalKey();
-
-  @override
   Widget build(BuildContext context) {
     final ScrollableState? scrollable = Scrollable.maybeOf(context);
     final Axis axis = scrollable?.position.axis ?? Axis.vertical;
@@ -167,20 +160,18 @@ class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
 
     // The scrolled axis has to be known to size the overscan; the cross axis is
     // happy to come from the constraints.
-    final double? height = widget.height ?? (horizontal ? null : screen.height);
-    final double? width = widget.width ?? (horizontal ? screen.width : null);
+    final double? height = this.height ?? (horizontal ? null : screen.height);
+    final double? width = this.width ?? (horizontal ? screen.width : null);
 
-    final Widget layer =
-        widget.background ?? Image(image: widget.image!, fit: widget.fit);
+    final Widget layer = this.background ?? Image(image: image!, fit: fit);
 
     Widget background = SizedBox(
-      key: _backgroundKey,
-      height: horizontal ? null : height! * widget.parallax.overscan,
-      width: horizontal ? width! * widget.parallax.overscan : null,
+      height: horizontal ? null : height! * parallax.overscan,
+      width: horizontal ? width! * parallax.overscan : null,
       child: layer,
     );
 
-    final BlurProperties? blur = widget.blur;
+    final BlurProperties? blur = this.blur;
     if (blur != null && scrollable != null) {
       background = _ScrollBlur(
         scrollable: scrollable,
@@ -205,17 +196,16 @@ class _SimpleParallaxItemState extends State<SimpleParallaxItem> {
                       delegate: _ParallaxFlowDelegate(
                         scrollable: scrollable,
                         itemContext: context,
-                        backgroundKey: _backgroundKey,
-                        speed: widget.parallax.speed,
-                        zoom: widget.zoom,
+                        speed: parallax.speed,
+                        zoom: zoom,
                         axis: axis,
                       ),
                       children: <Widget>[background],
                     ),
             ),
           ),
-          if (widget.overlay != null) OverlayLayer(widget.overlay!),
-          if (widget.child != null) widget.child!,
+          if (overlay != null) OverlayLayer(overlay!),
+          if (child != null) child!,
         ],
       ),
     );
@@ -405,7 +395,6 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   _ParallaxFlowDelegate({
     required this.scrollable,
     required this.itemContext,
-    required this.backgroundKey,
     required this.speed,
     required this.zoom,
     required this.axis,
@@ -413,7 +402,6 @@ class _ParallaxFlowDelegate extends FlowDelegate {
 
   final ScrollableState scrollable;
   final BuildContext itemContext;
-  final GlobalKey backgroundKey;
   final double speed;
   final ZoomProperties? zoom;
   final Axis axis;
@@ -429,14 +417,10 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   @override
   void paintChildren(FlowPaintingContext context) {
     final RenderObject? itemBox = itemContext.findRenderObject();
-    final RenderObject? backgroundBox =
-        backgroundKey.currentContext?.findRenderObject();
+    final Size? backgroundSize = context.getChildSize(0);
     final double? progress = _progressOf(scrollable, itemContext, axis);
 
-    if (progress == null ||
-        itemBox is! RenderBox ||
-        backgroundBox is! RenderBox ||
-        !backgroundBox.hasSize) {
+    if (progress == null || itemBox is! RenderBox || backgroundSize == null) {
       // Nothing to measure against yet; draw the background where it stands so
       // the first frame is not blank.
       context.paintChild(0);
@@ -447,7 +431,7 @@ class _ParallaxFlowDelegate extends FlowDelegate {
     final Alignment alignment =
         _horizontal ? Alignment(shift, 0) : Alignment(0, shift);
     final Rect childRect = alignment.inscribe(
-      backgroundBox.size,
+      backgroundSize,
       Offset.zero & itemBox.size,
     );
 
@@ -477,7 +461,6 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   bool shouldRepaint(_ParallaxFlowDelegate oldDelegate) =>
       scrollable != oldDelegate.scrollable ||
       itemContext != oldDelegate.itemContext ||
-      backgroundKey != oldDelegate.backgroundKey ||
       speed != oldDelegate.speed ||
       zoom != oldDelegate.zoom ||
       axis != oldDelegate.axis;

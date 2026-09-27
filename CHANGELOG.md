@@ -1,5 +1,28 @@
 # SimpleParallax Versions
 
+## 2.0.2
+
+### Changed
+
+- The README is half the length. The parameter tables stay, and so does what the package is fast
+  at; the tour of every option goes, since the demo shows it running and the API reference carries
+  an example per member.
+- The README carries its build badge again, pointed at the branch the repository actually builds
+  from.
+- `SimpleParallaxItem` no longer holds a `GlobalKey` per item: the flow reads the background size
+  from its own child. The widget is now stateless.
+
+### Fixed
+
+- `SimpleParallaxContainer` ignores a nested scrollable on its own axis too. A vertical list inside
+  the content used to drive the background with its own scroll.
+- `SimpleParallaxContainer` keeps its background in step when nothing scrolls: a resize, content
+  that grows or shrinks, an offset restored on the first layout, or a new `parallax`, `zoom` or
+  `blur`. The background used to stay where it was until the next scroll.
+- A horizontal view with `smooth` on no longer holds on to the vertical wheel once it has reached
+  the end it is heading for. Inside a vertical page, the page used to stop scrolling under it.
+- The library example still passed `autoSpeed`, which 2.0.0 removed.
+
 ## 2.0.1
 
 ### Changed

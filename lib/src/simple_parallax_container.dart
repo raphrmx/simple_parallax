@@ -224,6 +224,11 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
   late final ValueNotifier<_Drift> _drift =
       ValueNotifier<_Drift>(_driftAt(0, 0));
 
+  /// The metrics and the viewport extent the drift was last worked out from,
+  /// kept so a change of settings can be applied without waiting for a scroll.
+  ScrollMetrics? _metrics;
+  double _viewportExtent = 0;
+
   bool get _horizontal => widget.scrollDirection == Axis.horizontal;
 
   /// The background layer: the caller's widget, or their image wrapped in one.
@@ -235,6 +240,18 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
           fit: widget.fit,
           alignment: widget.alignment,
         );
+  }
+
+  @override
+  void didUpdateWidget(SimpleParallaxContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ScrollMetrics? metrics = _metrics;
+    if (metrics != null &&
+        (widget.parallax != oldWidget.parallax ||
+            widget.zoom != oldWidget.zoom ||
+            widget.blur != oldWidget.blur)) {
+      _follow(metrics, _viewportExtent);
+    }
   }
 
   @override
@@ -291,19 +308,39 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
     return _horizontal ? Alignment(at, 0) : Alignment(0, at);
   }
 
-  bool _onScroll(ScrollUpdateNotification notification, double viewportExtent) {
-    // A scrollable nested the other way round says nothing about our own
-    // travel, so it must not move the background.
-    if (notification.metrics.axis != widget.scrollDirection) return false;
+  /// Follows the content on a scroll, and on a change of its metrics: a resize,
+  /// content that grows or shrinks, or an offset restored on the first layout,
+  /// none of which scrolls.
+  bool _onNotification(Notification notification, double viewportExtent) {
+    final ScrollMetrics? metrics = switch (notification) {
+      ScrollUpdateNotification(:final ScrollMetrics metrics) => metrics,
+      ScrollMetricsNotification(:final ScrollMetrics metrics) => metrics,
+      _ => null,
+    };
+    // Only our own view counts. One nested inside the content, whichever way it
+    // runs, says nothing about our travel and must not move the background.
+    if (metrics == null ||
+        (notification as ViewportNotificationMixin).depth != 0 ||
+        metrics.axis != widget.scrollDirection) {
+      return false;
+    }
 
-    final double progress = _progressFor(notification.metrics);
+    _follow(metrics, viewportExtent);
+    // Let the notification keep bubbling: an ancestor may be listening too.
+    return false;
+  }
+
+  /// Puts the background where [metrics] have the content.
+  void _follow(ScrollMetrics metrics, double viewportExtent) {
+    _metrics = metrics;
+    _viewportExtent = viewportExtent;
+
+    final double progress = _progressFor(metrics);
     // A fraction of the travel spread over the whole scroll, so the background
     // never runs past the overscan it was drawn with.
     final double offset =
         progress * _travelFor(viewportExtent) * widget.parallax.speed;
     if (offset.isFinite) _drift.value = _driftAt(offset, progress);
-    // Let the notification keep bubbling: an ancestor may be listening too.
-    return false;
   }
 
   /// The scrolling content: the slivers the caller gave us, or the single box
@@ -346,9 +383,9 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
           // caller gave us.
           height: _horizontal ? widget.height : viewportHeight,
           width: _horizontal ? viewportWidth : widget.width,
-          child: NotificationListener<ScrollUpdateNotification>(
-            onNotification: (ScrollUpdateNotification notification) =>
-                _onScroll(notification, viewportExtent),
+          child: NotificationListener<Notification>(
+            onNotification: (Notification notification) =>
+                _onNotification(notification, viewportExtent),
             child: Stack(
               fit: StackFit.expand,
               children: <Widget>[

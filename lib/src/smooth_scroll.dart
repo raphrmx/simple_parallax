@@ -96,6 +96,13 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     });
   }
 
+  /// Whether a notch of [delta] would move the view at all, counted from where
+  /// the notch being animated is headed.
+  bool canWheelBy(double delta) {
+    final double from = _target ?? pixels;
+    return delta < 0 ? from > minScrollExtent : from < maxScrollExtent;
+  }
+
   @override
   void jumpTo(double value) {
     _target = null;
@@ -115,7 +122,9 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
 /// A [Scrollable] reads a wheel along its own axis alone, so a horizontal view
 /// never moves under a plain wheel, which only carries a vertical delta. The
 /// view claims the pointer signal only when it has a delta of its own, which
-/// leaves the other axis to this widget.
+/// leaves the other axis to this widget. At either end that wheel is let
+/// through, so a horizontal view inside a vertical page does not stop the page
+/// from scrolling.
 class SmoothScroll extends StatefulWidget {
   /// Creates a smoothly wheeled scroll view through [builder].
   const SmoothScroll({
@@ -159,7 +168,9 @@ class _SmoothScrollState extends State<SmoothScroll> {
       return;
     }
     final double delta = horizontal ? scrolled.dy : scrolled.dx;
-    if (delta == 0) {
+    // At the end the wheel is heading for, the view has nothing to do with it,
+    // so it is left to an enclosing scroll view rather than swallowed here.
+    if (delta == 0 || !position.canWheelBy(delta)) {
       return;
     }
 

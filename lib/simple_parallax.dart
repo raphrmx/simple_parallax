@@ -32,7 +32,7 @@
 /// ```dart
 /// SimpleParallaxContainer(
 ///   image: const AssetImage('assets/images/background.webp'),
-///   autoSpeed: true,
+///   parallax: const ParallaxProperties(speed: 0.5),
 ///   child: Column(children: items),
 /// );
 /// ```
