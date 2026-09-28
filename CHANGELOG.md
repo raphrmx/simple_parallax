@@ -1,5 +1,21 @@
 # SimpleParallax Versions
 
+## 2.2.0
+
+### Added
+
+- `crossParallax` on `SimpleParallaxItem`, a drift along the other axis that follows the nearest
+  scrollable running that way. A block in a horizontal carousel inside a vertical page can now
+  slide sideways with the carousel and downwards with the page at the same time, each axis at its
+  own speed and overscan. The background is drawn larger on both axes for it, and decoded to match.
+  The zoom and the blur keep following the main scrollable, and nothing changes when it is left
+  `null`.
+- A third row in the example's carousel screen, following both.
+
+### Fixed
+
+- A line of the `decodeAtDisplaySize` documentation broke in the middle of a sentence.
+
 ## 2.1.0
 
 ### Added

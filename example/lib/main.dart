@@ -190,7 +190,7 @@ class _Menu extends StatelessWidget {
             _entry(
               context,
               'A carousel in a page',
-              'Following the row, or the page around it',
+              'Following the row, the page around it, or both',
               const ItemCarouselDemo(),
             ),
             _entry(
@@ -805,13 +805,15 @@ class ItemVerticalDemo extends StatelessWidget {
   }
 }
 
-/// Items in a horizontal row inside a vertical page, twice.
+/// Items in a horizontal row inside a vertical page, three times.
 ///
 /// In the first row the blocks read their axis from the row, as in any
 /// horizontal list, and slide sideways as it is dragged. The second row is the
 /// same with `scrollAxis: Axis.vertical`: the blocks look past the row to the
 /// page and slide downwards as the page scrolls, like the blocks of a vertical
-/// list. Either way they are laid out by the row, so they take a `width`.
+/// list. The third follows both, sideways with the row through `parallax` and
+/// downwards with the page through `crossParallax`, at a gentler speed. Every
+/// way they are laid out by the row, so they take a `width`.
 class ItemCarouselDemo extends StatelessWidget {
   /// Creates the carousel demo.
   const ItemCarouselDemo({super.key});
@@ -841,11 +843,21 @@ class ItemCarouselDemo extends StatelessWidget {
           ),
           _Carousel(scrollAxis: Axis.vertical),
           SizedBox(
+            height: 260,
+            child: _Prose(
+              'Or both at once',
+              'Sideways with the row, and downwards with the page at a '
+                  'gentler speed. Scroll the page, then drag the row.',
+            ),
+          ),
+          _Carousel(crossParallax: ParallaxProperties(speed: 0.5)),
+          SizedBox(
             height: 420,
             child: _Prose(
               'Which one to follow',
               'Left alone, a block follows the nearest scrollable. scrollAxis '
-                  'names the one it should follow when they are nested.',
+                  'names the one it should follow when they are nested, and '
+                  'crossParallax adds the other.',
             ),
           ),
         ],
@@ -854,11 +866,13 @@ class ItemCarouselDemo extends StatelessWidget {
   }
 }
 
-/// A row of blocks following the scrollable on [scrollAxis].
+/// A row of blocks following the scrollable on [scrollAxis], and the one
+/// running across it too when there is a [crossParallax].
 class _Carousel extends StatelessWidget {
-  const _Carousel({this.scrollAxis});
+  const _Carousel({this.scrollAxis, this.crossParallax});
 
   final Axis? scrollAxis;
+  final ParallaxProperties? crossParallax;
 
   static const List<(String, String)> _days = <(String, String)>[
     ('DAY ONE', 'The southern pass'),
@@ -883,6 +897,7 @@ class _Carousel extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           parallax: const ParallaxProperties(overscan: 1.8),
           scrollAxis: scrollAxis,
+          crossParallax: crossParallax,
           child: _Caption(_days[index].$1, _days[index].$2),
         ),
       ),

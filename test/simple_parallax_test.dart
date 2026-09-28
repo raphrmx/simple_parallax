@@ -2708,4 +2708,185 @@ void main() {
       expect(view.clipBehavior, Clip.none);
     });
   });
+
+  group('the drift across', () {
+    /// A carousel of one 400 by 300 block, a screenful down a vertical page,
+    /// drifting with the carousel and, through [crossParallax], with the page.
+    Future<void> pumpCross(
+      WidgetTester tester, {
+      ParallaxProperties? crossParallax = const ParallaxProperties(),
+      ZoomProperties? zoom,
+      ImageProvider? image,
+    }) =>
+        tester.pumpWidget(
+          _app(
+            ListView(
+              children: <Widget>[
+                const SizedBox(height: 600),
+                SizedBox(
+                  height: 300,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: <Widget>[
+                      SimpleParallaxItem(
+                        image: image,
+                        background: image == null ? _layer : null,
+                        width: 400,
+                        zoom: zoom,
+                        crossParallax: crossParallax,
+                      ),
+                      const SizedBox(width: 2000),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 1400),
+              ],
+            ),
+          ),
+        );
+
+    ScrollPosition page(WidgetTester tester) =>
+        (tester.state(find.byType(Scrollable).first) as ScrollableState)
+            .position;
+    ScrollPosition carousel(WidgetTester tester) =>
+        (tester.state(find.byType(Scrollable).at(1)) as ScrollableState)
+            .position;
+
+    Rect layerInBlock(WidgetTester tester) =>
+        tester.getRect(find.byKey(_layerKey)).shift(
+              -tester.getTopLeft(find.byType(SimpleParallaxItem)),
+            );
+
+    testWidgets('drifts with the carousel and with the page', (
+      WidgetTester tester,
+    ) async {
+      await pumpCross(tester);
+      page(tester).jumpTo(300);
+      await tester.pump();
+      final Rect before = layerInBlock(tester);
+
+      // Drawn larger on both axes.
+      expect(before.size, const Size(600, 450));
+
+      page(tester).jumpTo(500);
+      await tester.pump();
+      final Rect paged = layerInBlock(tester);
+      expect(paged.left, before.left);
+      expect(paged.top, isNot(before.top));
+
+      carousel(tester).jumpTo(100);
+      await tester.pump();
+      final Rect swiped = layerInBlock(tester);
+      expect(swiped.left, isNot(paged.left));
+      expect(swiped.top, paged.top);
+    });
+
+    testWidgets('leaves the zoom to the scrollable followed', (
+      WidgetTester tester,
+    ) async {
+      await pumpCross(tester, zoom: const ZoomProperties(0.5));
+      page(tester).jumpTo(300);
+      await tester.pump();
+      final double before = layerInBlock(tester).width;
+
+      page(tester).jumpTo(500);
+      await tester.pump();
+      expect(layerInBlock(tester).width, before);
+
+      carousel(tester).jumpTo(100);
+      await tester.pump();
+      expect(layerInBlock(tester).width, isNot(before));
+    });
+
+    testWidgets('stays one axis without it', (WidgetTester tester) async {
+      await pumpCross(tester, crossParallax: null);
+      page(tester).jumpTo(300);
+      await tester.pump();
+      final Rect before = layerInBlock(tester);
+
+      expect(before.size, const Size(600, 300));
+      page(tester).jumpTo(500);
+      await tester.pump();
+      expect(layerInBlock(tester), before);
+    });
+
+    testWidgets('does nothing with no scrollable the other way', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            scrollDirection: Axis.horizontal,
+            children: const <Widget>[
+              SimpleParallaxItem(
+                background: _layer,
+                width: 400,
+                crossParallax: ParallaxProperties(),
+              ),
+              SizedBox(width: 2000),
+            ],
+          ),
+        ),
+      );
+
+      // The page itself does not scroll, so only the list's axis is drawn
+      // larger.
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(600, 600));
+    });
+
+    testWidgets('holds still on both axes under reduced motion', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          _reducedMotion(
+            ListView(
+              children: <Widget>[
+                const SizedBox(height: 600),
+                SizedBox(
+                  height: 300,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: const <Widget>[
+                      SimpleParallaxItem(
+                        background: _layer,
+                        width: 400,
+                        crossParallax: ParallaxProperties(),
+                      ),
+                      SizedBox(width: 2000),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 1400),
+              ],
+            ),
+          ),
+        ),
+      );
+      page(tester).jumpTo(300);
+      await tester.pump();
+      final Rect before = layerInBlock(tester);
+
+      // Centred on both axes.
+      expect(before, const Rect.fromLTWH(-100, -75, 600, 450));
+
+      page(tester).jumpTo(500);
+      carousel(tester).jumpTo(100);
+      await tester.pump();
+      expect(layerInBlock(tester), before);
+    });
+
+    testWidgets('decodes the image for both overscans', (
+      WidgetTester tester,
+    ) async {
+      await pumpCross(tester, image: _image);
+      page(tester).jumpTo(300);
+      await tester.pump();
+
+      // 600 by 450 on a screen of 3, rounded up to 64.
+      final DisplaySizeImage image =
+          tester.widget<Image>(find.byType(Image)).image as DisplaySizeImage;
+      expect(image.size, const Size(1856, 1408));
+    });
+  });
 }

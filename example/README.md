@@ -9,7 +9,7 @@ One app, eleven screens, reachable from a menu grouped by container mode, item m
 | `ContainerSliversDemo` | Container mode over slivers, with a `SliverAppBar` and a `SmoothScrollController` to go back up |
 | `ContainerCustomDemo` | A gradient as the background |
 | `ItemVerticalDemo` | Item mode, two blocks at two speeds |
-| `ItemCarouselDemo` | Blocks in a sideways row, following the row, then the page with `scrollAxis` |
+| `ItemCarouselDemo` | Blocks in a sideways row, following the row, the page with `scrollAxis`, then both with `crossParallax` |
 | `ItemBuilderDemo` | Five hundred blocks from `SimpleParallaxWidget.builder` |
 | `ItemCustomDemo` | A gradient, a tinted image and a looping video as backgrounds |
 | `ItemZoomBlurDemo` | Both directions of the zoom, then of the blur |

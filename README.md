@@ -96,7 +96,7 @@ screen, then hold there or turn back.
 - Items take `borderRadius` for a rounded card, and `alignment` to keep the top of a portrait in
   the frame.
 - In nested scrollables, `scrollAxis` picks the one an item follows, for instance the page around
-  a carousel.
+  a carousel, and `crossParallax` has it follow the other one as well.
 - The mouse wheel is eased on desktop and the web. To drive the view from outside and keep that,
   pass a `SmoothScrollController` as its `controller`.
 - The platform's reduced motion setting is followed: backgrounds hold still. Pass
