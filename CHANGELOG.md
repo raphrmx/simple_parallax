@@ -1,5 +1,16 @@
 # SimpleParallax Versions
 
+## 2.3.1
+
+### Fixed
+
+- Turning `smooth` on or off on a view already on screen no longer sends it back to the top. The
+  view was built anew, since the easing wrapped it in a widget of its own only when it was on; that
+  widget now stays in place either way and hands the view another controller, whose position takes
+  over the offset. On iOS and Android a view with no controller is the primary one, which Flutter
+  builds differently, so going from no easing to easing there still builds it anew; the easing is
+  off by default on those platforms, which have no wheel to ease.
+
 ## 2.3.0
 
 ### Added

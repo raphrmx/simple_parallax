@@ -1325,6 +1325,53 @@ void main() {
       variant: _desktop,
     );
 
+    testWidgets(
+      'keeps a container where it was as it is turned on and off',
+      (
+        WidgetTester tester,
+      ) async {
+        Widget page({required bool smooth}) => _app(
+              SimpleParallaxContainer(
+                background: _layer,
+                smooth: smooth,
+                child: Column(children: _tall()),
+              ),
+            );
+
+        await tester.pumpWidget(page(smooth: true));
+        _position(tester).jumpTo(300);
+        await tester.pump();
+
+        await tester.pumpWidget(page(smooth: false));
+        expect(_position(tester).pixels, 300);
+
+        await tester.pumpWidget(page(smooth: true));
+        expect(_position(tester).pixels, 300);
+      },
+      variant: _desktop,
+    );
+
+    testWidgets(
+      'keeps a widget where it was as it is turned on and off',
+      (
+        WidgetTester tester,
+      ) async {
+        Widget page({required bool smooth}) =>
+            _app(SimpleParallaxWidget(smooth: smooth, children: _tall()));
+
+        await tester.pumpWidget(page(smooth: true));
+        _position(tester).jumpTo(300);
+        await tester.pump();
+
+        await tester.pumpWidget(page(smooth: false));
+        expect(_position(tester).pixels, 300);
+
+        await tester.pumpWidget(page(smooth: true));
+        expect(_position(tester).pixels, 300);
+      },
+      variant: _desktop,
+    );
+
     test('is on when nothing stands in its way', () {
       expect(const SimpleParallaxWidget(children: <Widget>[]).smooth, isTrue);
     });

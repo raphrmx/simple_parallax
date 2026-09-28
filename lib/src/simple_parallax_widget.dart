@@ -186,21 +186,18 @@ class SimpleParallaxWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ScrollController? given = controller;
     final bool eased = smooth && (_smoothAsked ?? easesWheelByDefault);
-    // A SmoothScrollController goes through here even when the wheel is not
-    // eased, which is what turns its easing off.
-    if (eased || given is SmoothScrollController) {
-      return SmoothScroll(
-        axis: scrollDirection,
-        controller: given is SmoothScrollController ? given : null,
-        // Easing the wheel is motion too.
-        eased: eased && !MediaQuery.disableAnimationsOf(context),
-        builder: (BuildContext context, ScrollController controller) =>
-            _view(controller),
-      );
-    }
-    return _view(controller);
+    // Always there, active or not, so a change of [smooth] keeps the view and
+    // its offset.
+    return SmoothScroll(
+      axis: scrollDirection,
+      active: eased,
+      controller: controller,
+      // Easing the wheel is motion too.
+      eased: eased && !MediaQuery.disableAnimationsOf(context),
+      builder: (BuildContext context, ScrollController? controller) =>
+          _view(controller),
+    );
   }
 
   /// The scroll view itself, on whichever controller it was handed.

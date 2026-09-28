@@ -435,21 +435,18 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
   /// The scrolling content: the slivers the caller gave us, or the single box
   /// sliver holding [SimpleParallaxContainer.child].
   Widget _buildContent(bool still) {
-    final ScrollController? given = widget.controller;
     final bool eased =
         widget.smooth && (widget._smoothAsked ?? easesWheelByDefault);
-    // A SmoothScrollController goes through here even when the wheel is not
-    // eased, which is what turns its easing off.
-    if (eased || given is SmoothScrollController) {
-      return SmoothScroll(
-        axis: widget.scrollDirection,
-        controller: given is SmoothScrollController ? given : null,
-        eased: eased && !still,
-        builder: (BuildContext context, ScrollController controller) =>
-            _scrollView(controller),
-      );
-    }
-    return _scrollView(widget.controller);
+    // Always there, active or not, so a change of [smooth] keeps the view and
+    // its offset.
+    return SmoothScroll(
+      axis: widget.scrollDirection,
+      active: eased,
+      controller: widget.controller,
+      eased: eased && !still,
+      builder: (BuildContext context, ScrollController? controller) =>
+          _scrollView(controller),
+    );
   }
 
   /// The scroll view itself, on whichever controller it was handed.

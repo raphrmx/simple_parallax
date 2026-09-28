@@ -173,11 +173,21 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
 /// leaves the other axis to this widget. At either end that wheel is let
 /// through, so a horizontal view inside a vertical page does not stop the page
 /// from scrolling.
+///
+/// It stays in the tree whether it is [active] or not, so turning the easing
+/// on or off hands the view another controller rather than building another
+/// view: the new position takes over the offset of the old one, and the page
+/// does not jump back to the top. Except on iOS and Android, where a view with
+/// no controller becomes the primary one, which Flutter builds with a widget
+/// more: going from no controller to one of this widget's own there still
+/// builds the view anew. The easing is off by default on those platforms,
+/// having no wheel to ease, so that is a change nobody makes in practice.
 class SmoothScroll extends StatefulWidget {
   /// Creates a smoothly wheeled scroll view through [builder].
   const SmoothScroll({
     required this.axis,
     required this.builder,
+    this.active = true,
     this.controller,
     this.eased = true,
     super.key,
@@ -186,16 +196,23 @@ class SmoothScroll extends StatefulWidget {
   /// The axis the built view scrolls along.
   final Axis axis;
 
-  /// The caller's controller, or `null` for one of this widget's own. The
-  /// caller's is never disposed here.
-  final SmoothScrollController? controller;
+  /// Whether this widget takes the wheel. Off, the view is built on
+  /// [controller] as it stands, or on none, and the wheel is the platform's;
+  /// a [SmoothScrollController] handed in is still honoured, with [eased].
+  final bool active;
+
+  /// The caller's controller, or `null` for one of this widget's own when it
+  /// is [active] and none at all when it is not. The caller's is never
+  /// disposed here.
+  final ScrollController? controller;
 
   /// Whether a wheel notch is animated. Off, it lands in one step, while the
   /// wheel is still brought to the axis of a horizontal view.
   final bool eased;
 
-  /// Builds the scroll view, which has to take the controller it is given.
-  final Widget Function(BuildContext context, ScrollController controller)
+  /// Builds the scroll view, which has to take the controller it is given,
+  /// `null` included.
+  final Widget Function(BuildContext context, ScrollController? controller)
       builder;
 
   @override
@@ -203,24 +220,34 @@ class SmoothScroll extends StatefulWidget {
 }
 
 class _SmoothScrollState extends State<SmoothScroll> {
-  /// The controller this widget made, when it was not handed one. Kept until
-  /// the widget goes, even if a controller is handed in meanwhile: the view may
+  /// The controller this widget made, when it was active and not handed one.
+  /// Kept until the widget goes, even once it is no longer used: the view may
   /// still be attached to it until it rebuilds.
   SmoothScrollController? _own;
 
-  SmoothScrollController get _controller =>
-      widget.controller ?? (_own ??= SmoothScrollController());
+  /// The controller the view is built on: the caller's, this widget's own when
+  /// it is active and was handed none, or none.
+  ScrollController? get _controller {
+    final ScrollController? given = widget.controller;
+    if (given != null) return given;
+    return widget.active ? (_own ??= SmoothScrollController()) : null;
+  }
+
+  void _syncEasing() {
+    final ScrollController? controller = _controller;
+    if (controller is SmoothScrollController) controller.eased = widget.eased;
+  }
 
   @override
   void initState() {
     super.initState();
-    _controller.eased = widget.eased;
+    _syncEasing();
   }
 
   @override
   void didUpdateWidget(SmoothScroll oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _controller.eased = widget.eased;
+    _syncEasing();
   }
 
   @override
@@ -230,10 +257,13 @@ class _SmoothScrollState extends State<SmoothScroll> {
   }
 
   void _onPointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent || !_controller.hasClients) {
+    final ScrollController? controller = _controller;
+    if (event is! PointerScrollEvent ||
+        controller is! SmoothScrollController ||
+        !controller.hasClients) {
       return;
     }
-    final ScrollPosition position = _controller.position;
+    final ScrollPosition position = controller.position;
     if (position is! SmoothScrollPosition) {
       return;
     }
