@@ -3,7 +3,7 @@ description: >-
   Parallax widgets for Flutter, in pure Dart with no dependencies. A container
   mode and a per-item mode, either axis, with a drift, a zoom, a blur and an
   overlay set on their own.
-version: 2.3.1
+version: 2.3.2
 homepage: https://comapps.web.app/simple_parallax/
 repository: https://github.com/raphrmx/simple_parallax
 issue_tracker: https://github.com/raphrmx/simple_parallax/issues

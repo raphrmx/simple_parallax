@@ -1,5 +1,16 @@
 # SimpleParallax Versions
 
+## 2.3.2
+
+### Changed
+
+- A `SimpleParallaxItem` given its extent along the scroll no longer reads the screen size, so it
+  is not rebuilt when the window is resized.
+- Internal cleanup, no change in behaviour: the item's `build` is split into smaller parts, the
+  overscan of the layer is worked out in one place, and whether the wheel is eased is decided by
+  one function shared by both views. `smooth` is now a getter; reading it gives the same value.
+- The tests are split by topic into eight files.
+
 ## 2.3.1
 
 ### Fixed

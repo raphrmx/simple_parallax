@@ -19,6 +19,14 @@ bool get easesWheelByDefault => switch (defaultTargetPlatform) {
       _ => true,
     };
 
+/// Whether a view eases the wheel, given the `smooth` it was handed: as asked,
+/// or else where the platform expects a wheel and [controller], if any, is a
+/// [SmoothScrollController].
+bool easesWheel(bool? smooth, ScrollController? controller) =>
+    smooth ??
+    (easesWheelByDefault &&
+        (controller == null || controller is SmoothScrollController));
+
 /// A [ScrollController] whose position eases the mouse wheel in.
 ///
 /// A [Scrollable] applies a wheel notch with [ScrollPosition.jumpTo], which

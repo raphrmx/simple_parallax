@@ -282,73 +282,58 @@ class SimpleParallaxItem extends StatelessWidget {
     // The nearest scrollable lays the block out, so it settles the defaults;
     // the one followed may be further up.
     final ScrollableState? nearest = Scrollable.maybeOf(context);
+    final bool laidOutSideways = nearest?.position.axis == Axis.horizontal;
+
+    // The scrolled axis cannot come from the constraints, which are unbounded
+    // along it; the cross axis is happy to. The screen is read only when it
+    // is needed, so a block given its size is not rebuilt with the window.
+    final double? height = this.height ??
+        (laidOutSideways ? null : MediaQuery.sizeOf(context).height);
+    final double? width = this.width ??
+        (laidOutSideways ? MediaQuery.sizeOf(context).width : null);
+
+    final Widget block = Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        RepaintBoundary(child: ClipRect(child: _painted(context, nearest))),
+        if (overlay != null) OverlayLayer(overlay!),
+        if (child != null) child!,
+      ],
+    );
+
+    final BorderRadiusGeometry? borderRadius = this.borderRadius;
+    return SizedBox(
+      height: height,
+      width: width,
+      child: borderRadius == null
+          ? block
+          : ClipRRect(borderRadius: borderRadius, child: block),
+    );
+  }
+
+  /// The background, placed along the scrollables it follows.
+  Widget _painted(BuildContext context, ScrollableState? nearest) {
     final ScrollableState? followed = scrollAxis == null
         ? nearest
         : Scrollable.maybeOf(context, axis: scrollAxis);
-    final bool laidOutSideways = nearest?.position.axis == Axis.horizontal;
     // The scrollable running across the one followed, for [crossParallax].
     final ScrollableState? crossed = followed == null || crossParallax == null
         ? null
         : Scrollable.maybeOf(context, axis: _across(followed.position.axis));
-    final Size screen = MediaQuery.sizeOf(context);
     final bool still =
         respectReducedMotion && MediaQuery.disableAnimationsOf(context);
-
-    // The scrolled axis cannot come from the constraints, which are unbounded
-    // along it; the cross axis is happy to.
-    final double? height =
-        this.height ?? (laidOutSideways ? null : screen.height);
-    final double? width = this.width ?? (laidOutSideways ? screen.width : null);
-
-    final ZoomProperties? zoom = this.zoom;
     final double devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
 
-    // How much larger than the block the layer is drawn along [axis].
-    double overscanAlong(Axis axis) {
-      if (followed?.position.axis == axis) return parallax.overscan;
-      if (crossed?.position.axis == axis) return crossParallax!.overscan;
-      return 1;
-    }
-
-    // The layer, sized along the axes followed.
-    Widget layerIn(Size block) {
-      ImageProvider<Object>? image = this.image;
-      if (image != null && decodeAtDisplaySize) {
-        image = decodedFor(
-          image,
-          layer: Size(
-            block.width * overscanAlong(Axis.horizontal),
-            block.height * overscanAlong(Axis.vertical),
-          ),
-          devicePixelRatio: devicePixelRatio,
-          fit: fit,
-          zoom: zoom == null ? 1 : 1 + zoom.amount.abs(),
-        );
-      }
-
-      // Decoration, whatever it is made of: left to announce itself, an image
-      // would mark the block and everything in [child] as one. The boundary
-      // keeps it from being painted again on every scroll: only the transform
-      // over it changes.
-      return RepaintBoundary(
-        child: ExcludeSemantics(
-          child: background ??
-              ImageLayer(
-                image: image!,
-                fit: fit,
-                alignment: alignment,
-                placeholderColor: placeholderColor,
-                fadeIn: still ? Duration.zero : fadeIn,
-                errorBuilder: errorBuilder,
-              ),
-        ),
-      );
-    }
-
     // Laid out rather than built, so the decode size can follow the block.
-    final Widget painted = LayoutBuilder(
+    return LayoutBuilder(
       builder: (BuildContext _, BoxConstraints constraints) {
-        final Widget layer = layerIn(constraints.biggest);
+        final Widget layer = _layer(
+          constraints.biggest,
+          followed: followed?.position.axis,
+          crossed: crossed?.position.axis,
+          devicePixelRatio: devicePixelRatio,
+          still: still,
+        );
         if (followed == null) return layer;
 
         final TravelProgress progress = TravelProgress();
@@ -376,25 +361,72 @@ class SimpleParallaxItem extends StatelessWidget {
         );
       },
     );
+  }
 
-    final Widget block = Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        RepaintBoundary(child: ClipRect(child: painted)),
-        if (overlay != null) OverlayLayer(overlay!),
-        if (child != null) child!,
-      ],
-    );
+  /// The background layer of a [block], drawn larger by the overscan along
+  /// the axes [followed] and [crossed].
+  Widget _layer(
+    Size block, {
+    required Axis? followed,
+    required Axis? crossed,
+    required double devicePixelRatio,
+    required bool still,
+  }) {
+    ImageProvider<Object>? image = this.image;
+    if (image != null && decodeAtDisplaySize) {
+      double along(Axis axis) => _overscanAlong(
+            axis,
+            followed: followed,
+            crossed: crossed,
+            parallax: parallax,
+            crossParallax: crossParallax,
+          );
+      final ZoomProperties? zoom = this.zoom;
+      image = decodedFor(
+        image,
+        layer: Size(
+          block.width * along(Axis.horizontal),
+          block.height * along(Axis.vertical),
+        ),
+        devicePixelRatio: devicePixelRatio,
+        fit: fit,
+        zoom: zoom == null ? 1 : 1 + zoom.amount.abs(),
+      );
+    }
 
-    final BorderRadiusGeometry? borderRadius = this.borderRadius;
-    return SizedBox(
-      height: height,
-      width: width,
-      child: borderRadius == null
-          ? block
-          : ClipRRect(borderRadius: borderRadius, child: block),
+    // Decoration, whatever it is made of: left to announce itself, an image
+    // would mark the block and everything in [child] as one. The boundary
+    // keeps it from being painted again on every scroll: only the transform
+    // over it changes.
+    return RepaintBoundary(
+      child: ExcludeSemantics(
+        child: background ??
+            ImageLayer(
+              image: image!,
+              fit: fit,
+              alignment: alignment,
+              placeholderColor: placeholderColor,
+              fadeIn: still ? Duration.zero : fadeIn,
+              errorBuilder: errorBuilder,
+            ),
+      ),
     );
   }
+}
+
+/// How much larger than the block the layer is drawn along [axis]: by the
+/// overscan of the scrollable followed that way, and not at all along an axis
+/// no scrollable is followed on.
+double _overscanAlong(
+  Axis axis, {
+  required Axis? followed,
+  required Axis? crossed,
+  required ParallaxProperties parallax,
+  required ParallaxProperties? crossParallax,
+}) {
+  if (axis == followed) return parallax.overscan;
+  if (axis == crossed && crossParallax != null) return crossParallax.overscan;
+  return 1;
 }
 
 /// How far the block has come, from `0` the moment its leading edge appears at
@@ -502,19 +534,21 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   final Axis? _crossAxis;
 
   /// How much larger than the block the layer is along [axis].
-  double _overscanAlong(Axis axis) {
-    if (axis == _axis) return parallax.overscan;
-    final ParallaxProperties? cross = crossParallax;
-    return crossed == null || cross == null ? 1 : cross.overscan;
-  }
+  double _along(Axis axis) => _overscanAlong(
+        axis,
+        followed: _axis,
+        crossed: _crossAxis,
+        parallax: parallax,
+        crossParallax: crossParallax,
+      );
 
   /// The layer is the block times the overscan along each axis followed, and
   /// the block itself along an axis that is not, all tight.
   @override
   BoxConstraints getConstraintsForChild(int i, BoxConstraints constraints) =>
       BoxConstraints.tightFor(
-        width: constraints.maxWidth * _overscanAlong(Axis.horizontal),
-        height: constraints.maxHeight * _overscanAlong(Axis.vertical),
+        width: constraints.maxWidth * _along(Axis.horizontal),
+        height: constraints.maxHeight * _along(Axis.vertical),
       );
 
   /// Where the background stands along [followed], as an alignment from `-1`

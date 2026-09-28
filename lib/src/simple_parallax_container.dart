@@ -144,9 +144,7 @@ class SimpleParallaxContainer extends StatefulWidget {
     this.respectReducedMotion = true,
     super.key,
   })  : slivers = null,
-        smooth = smooth ??
-            (controller == null || controller is SmoothScrollController),
-        _smoothAsked = smooth,
+        _smooth = smooth,
         assert(
           (image == null) != (background == null),
           'pass exactly one of image and background',
@@ -194,9 +192,7 @@ class SimpleParallaxContainer extends StatefulWidget {
     this.respectReducedMotion = true,
     super.key,
   })  : child = null,
-        smooth = smooth ??
-            (controller == null || controller is SmoothScrollController),
-        _smoothAsked = smooth,
+        _smooth = smooth,
         assert(
           (image == null) != (background == null),
           'pass exactly one of image and background',
@@ -283,10 +279,11 @@ class SimpleParallaxContainer extends StatefulWidget {
   /// the primary one, so a tap on the iOS status bar would no longer scroll it
   /// back to the top. Set it to `true` to ease the wheel there as well. The
   /// value read here is the one asked for, or derived from [controller].
-  final bool smooth;
+  bool get smooth =>
+      _smooth ?? (controller == null || controller is SmoothScrollController);
 
   /// What was passed as [smooth], `null` for the platform to decide.
-  final bool? _smoothAsked;
+  final bool? _smooth;
 
   /// Whether [image] is decoded at the size it is drawn rather than at full
   /// resolution.
@@ -435,8 +432,7 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
   /// The scrolling content: the slivers the caller gave us, or the single box
   /// sliver holding [SimpleParallaxContainer.child].
   Widget _buildContent(bool still) {
-    final bool eased =
-        widget.smooth && (widget._smoothAsked ?? easesWheelByDefault);
+    final bool eased = easesWheel(widget._smooth, widget.controller);
     // Always there, active or not, so a change of [smooth] keeps the view and
     // its offset.
     return SmoothScroll(

@@ -82,9 +82,7 @@ class SimpleParallaxWidget extends StatelessWidget {
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.clipBehavior = Clip.hardEdge,
     super.key,
-  })  : smooth = smooth ??
-            (controller == null || controller is SmoothScrollController),
-        _smoothAsked = smooth,
+  })  : _smooth = smooth,
         itemBuilder = null,
         itemCount = null,
         assert(
@@ -109,9 +107,7 @@ class SimpleParallaxWidget extends StatelessWidget {
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.clipBehavior = Clip.hardEdge,
     super.key,
-  })  : smooth = smooth ??
-            (controller == null || controller is SmoothScrollController),
-        _smoothAsked = smooth,
+  })  : _smooth = smooth,
         children = const <Widget>[],
         assert(
           smooth != true ||
@@ -169,10 +165,11 @@ class SimpleParallaxWidget extends StatelessWidget {
   /// the primary one, so a tap on the iOS status bar would no longer scroll it
   /// back to the top. Set it to `true` to ease the wheel there as well. The
   /// value read here is the one asked for, or derived from [controller].
-  final bool smooth;
+  bool get smooth =>
+      _smooth ?? (controller == null || controller is SmoothScrollController);
 
   /// What was passed as [smooth], `null` for the platform to decide.
-  final bool? _smoothAsked;
+  final bool? _smooth;
 
   /// Restoration id handed to the scroll view, so the scroll offset survives
   /// the app being killed and restored.
@@ -186,7 +183,7 @@ class SimpleParallaxWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool eased = smooth && (_smoothAsked ?? easesWheelByDefault);
+    final bool eased = easesWheel(_smooth, controller);
     // Always there, active or not, so a change of [smooth] keeps the view and
     // its offset.
     return SmoothScroll(
