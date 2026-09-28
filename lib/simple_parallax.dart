@@ -21,12 +21,16 @@
 /// travel while the other stops at the middle.
 ///
 /// Both scroll views take a `smooth` flag, which eases the mouse wheel in and
-/// brings it to an axis a [Scrollable] otherwise leaves untouched.
+/// brings it to an axis a [Scrollable] otherwise leaves untouched. Handed a
+/// [SmoothScrollController] as their `controller`, they keep it on.
 ///
 /// Both scroll views are built on slivers.
 /// [SimpleParallaxContainer.slivers] takes its content as slivers, and
-/// [SimpleParallaxWidget] builds its blocks as they come into view, so a long
-/// list costs no more than a `ListView` would.
+/// [SimpleParallaxWidget.builder] creates its blocks as they come into view, so
+/// a long list costs no more than a `ListView.builder` would.
+///
+/// Both modes hold the background still when the platform asks for reduced
+/// motion, unless `respectReducedMotion` is turned off.
 ///
 /// ### Example:
 /// ```dart
@@ -43,8 +47,10 @@ import 'src/properties.dart';
 import 'src/simple_parallax_container.dart';
 import 'src/simple_parallax_item.dart';
 import 'src/simple_parallax_widget.dart';
+import 'src/smooth_scroll.dart';
 
 export 'src/properties.dart';
 export 'src/simple_parallax_container.dart';
 export 'src/simple_parallax_item.dart';
 export 'src/simple_parallax_widget.dart';
+export 'src/smooth_scroll.dart' show SmoothScrollController;

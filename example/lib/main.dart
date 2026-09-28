@@ -63,6 +63,10 @@ const List<_Note> _notes = <_Note>[
 /// The note a row at [index] shows, cycling through [_notes].
 _Note _noteAt(int index) => _notes[index % _notes.length];
 
+/// Stands in for the platform's reduced motion setting, so every demo can be
+/// seen the way someone who turned it on sees it.
+final ValueNotifier<bool> _reduceMotion = ValueNotifier<bool>(false);
+
 /// Every combination the package offers, behind a menu.
 class ExampleApp extends StatelessWidget {
   /// Creates the example app.
@@ -90,6 +94,19 @@ class ExampleApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       scrollBehavior: scrollBehavior,
       theme: theme,
+      // The switch on the menu reaches the demos the way the platform would,
+      // through MediaQuery.
+      builder: (BuildContext context, Widget? child) =>
+          ValueListenableBuilder<bool>(
+        valueListenable: _reduceMotion,
+        builder: (BuildContext context, bool reduce, Widget? _) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations:
+                reduce || MediaQuery.disableAnimationsOf(context),
+          ),
+          child: child!,
+        ),
+      ),
       home: const _Menu(),
     );
   }
@@ -136,48 +153,64 @@ class _Menu extends StatelessWidget {
               'each set on their own.',
               style: TextStyle(fontSize: 15, color: Color(0x99FFFFFF)),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
+            const _ReduceMotionSwitch(),
+            const _Section('Container mode'),
             _entry(
               context,
-              'Container mode',
-              'One background behind a scrolling column',
+              'One background behind the page',
+              'A scrolling column over a single drifting image',
               const ContainerVerticalDemo(),
             ),
             _entry(
               context,
-              'Container mode, sideways',
+              'Sideways',
               'The same, drifting on the horizontal axis',
               const ContainerHorizontalDemo(),
             ),
             _entry(
               context,
-              'Container mode, slivers',
-              'A SliverAppBar riding over the background',
+              'Slivers and a controller',
+              'A SliverAppBar over the background, and a way back up',
               const ContainerSliversDemo(),
             ),
             _entry(
               context,
-              'Item mode',
-              'Each block slides its own background',
+              'A gradient behind the page',
+              'No image anywhere, just a widget',
+              const ContainerCustomDemo(),
+            ),
+            const _Section('Item mode'),
+            _entry(
+              context,
+              'Blocks that slide their own background',
+              'Each block drifts as it crosses the screen',
               const ItemVerticalDemo(),
             ),
             _entry(
               context,
-              'Item mode, sideways',
-              'The blocks read the axis from the list',
-              const ItemHorizontalDemo(),
+              'A carousel in a page',
+              'Following the row, or the page around it',
+              const ItemCarouselDemo(),
             ),
             _entry(
               context,
-              'Zooming in and out',
-              'Two blocks, the same drift, opposite zooms',
-              const ItemZoomDemo(),
+              'Five hundred blocks',
+              'Built one at a time as they scroll in',
+              const ItemBuilderDemo(),
             ),
             _entry(
               context,
-              'Blurring in and out',
-              'The same two blocks, softened instead of scaled',
-              const ItemBlurDemo(),
+              'Widgets as the background',
+              'A gradient, a tinted image and a video',
+              const ItemCustomDemo(),
+            ),
+            const _Section('Effects'),
+            _entry(
+              context,
+              'Zooming and blurring',
+              'Each one run forwards, then backwards',
+              const ItemZoomBlurDemo(),
             ),
             _entry(
               context,
@@ -190,30 +223,6 @@ class _Menu extends StatelessWidget {
               'A tint over the image',
               'A fixed overlay, darkened, tinted or faded',
               const ItemOverlayDemo(),
-            ),
-            _entry(
-              context,
-              'A gradient as the background',
-              'No image anywhere, just a widget',
-              const ContainerCustomDemo(),
-            ),
-            _entry(
-              context,
-              'A tinted image as the background',
-              'Anything wrapping the image is yours',
-              const ItemCustomDemo(),
-            ),
-            _entry(
-              context,
-              'A video behind the page',
-              'Container mode over a looping video',
-              const ContainerVideoDemo(),
-            ),
-            _entry(
-              context,
-              'A video inside a block',
-              'Item mode over the same video',
-              const ItemVideoDemo(),
             ),
           ],
         ),
@@ -273,15 +282,79 @@ class _Menu extends StatelessWidget {
   }
 }
 
+/// A heading over a group of menu entries.
+class _Section extends StatelessWidget {
+  const _Section(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 18, 4, 10),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 2.4,
+          color: Color(0x99FFFFFF),
+        ),
+      ),
+    );
+  }
+}
+
+/// Turns [_reduceMotion] on and off.
+class _ReduceMotionSwitch extends StatelessWidget {
+  const _ReduceMotionSwitch();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0x14FFFFFF),
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _reduceMotion,
+        builder: (BuildContext context, bool reduce, Widget? _) =>
+            SwitchListTile(
+          value: reduce,
+          onChanged: (bool value) => _reduceMotion.value = value,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+          title: const Text(
+            'Reduce motion',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          subtitle: const Text(
+            'What the demos look like with the system setting on: the '
+            'backgrounds hold still and the wheel lands in one step.',
+            style: TextStyle(fontSize: 13, color: Color(0x99FFFFFF)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// A demo filling the window, with a way back over it.
 class _Screen extends StatelessWidget {
-  const _Screen({required this.child});
+  const _Screen({required this.child, this.color});
 
   final Widget child;
+
+  /// The page under the demo, or `null` for the app's dark one.
+  ///
+  /// The item screens stack blocks of prose on [_panel] between the parallax
+  /// blocks, and give the page that colour too. The smooth wheel stops the view
+  /// on fractions of a pixel, where the edge of a block is blended with what is
+  /// under it: on the dark page that shows as a grey line along every seam.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: color,
       body: Stack(
         children: <Widget>[
           Positioned.fill(child: child),
@@ -606,28 +679,65 @@ class ContainerHorizontalDemo extends StatelessWidget {
   }
 }
 
-/// Container mode over slivers, so the content builds as it scrolls.
+/// Container mode over slivers, so the content builds as it scrolls, with a
+/// controller of the page's own.
 ///
 /// `SimpleParallaxContainer.slivers` takes the content as slivers instead of a
 /// single child, which lets a `SliverAppBar` ride over the background and a
-/// list build only the rows the viewport needs.
-class ContainerSliversDemo extends StatelessWidget {
+/// list build only the rows the viewport needs. The `controller` is what the
+/// button in the bar uses to go back to the top. It is a
+/// `SmoothScrollController`, which keeps the wheel eased: a plain
+/// `ScrollController` would hand the wheel back to the platform.
+class ContainerSliversDemo extends StatefulWidget {
   /// Creates the sliver container demo.
   const ContainerSliversDemo({super.key});
+
+  @override
+  State<ContainerSliversDemo> createState() => _ContainerSliversDemoState();
+}
+
+class _ContainerSliversDemoState extends State<ContainerSliversDemo> {
+  final SmoothScrollController _controller = SmoothScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _backToTop() {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.jumpTo(0);
+      return;
+    }
+    _controller.animateTo(
+      0,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return _Screen(
       child: SimpleParallaxContainer.slivers(
         image: _background,
+        controller: _controller,
         parallax: const ParallaxProperties(overscan: 2),
         slivers: <Widget>[
-          const SliverAppBar(
-            title: Text('Slivers'),
-            backgroundColor: Color(0x66000000),
-            foregroundColor: Color(0xFFFFFFFF),
+          SliverAppBar(
+            title: const Text('Slivers'),
+            backgroundColor: const Color(0x66000000),
+            foregroundColor: const Color(0xFFFFFFFF),
             floating: true,
             automaticallyImplyLeading: false,
+            actions: <Widget>[
+              IconButton(
+                tooltip: 'Back to the top',
+                icon: const Icon(Icons.arrow_upward),
+                onPressed: _backToTop,
+              ),
+            ],
           ),
           SliverList.builder(
             itemCount: 40,
@@ -651,6 +761,7 @@ class ItemVerticalDemo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _Screen(
+      color: _panel,
       child: SimpleParallaxWidget(
         children: <Widget>[
           SizedBox(
@@ -694,54 +805,47 @@ class ItemVerticalDemo extends StatelessWidget {
   }
 }
 
-/// The same items in a horizontal list.
+/// Items in a horizontal row inside a vertical page, twice.
 ///
-/// Nothing is passed to the items about the axis: each one reads it from the
-/// scrollable it sits in. Give them a `width` here, the way you give them a
-/// `height` in a vertical list.
-class ItemHorizontalDemo extends StatelessWidget {
-  /// Creates the horizontal item demo.
-  const ItemHorizontalDemo({super.key});
+/// In the first row the blocks read their axis from the row, as in any
+/// horizontal list, and slide sideways as it is dragged. The second row is the
+/// same with `scrollAxis: Axis.vertical`: the blocks look past the row to the
+/// page and slide downwards as the page scrolls, like the blocks of a vertical
+/// list. Either way they are laid out by the row, so they take a `width`.
+class ItemCarouselDemo extends StatelessWidget {
+  /// Creates the carousel demo.
+  const ItemCarouselDemo({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const _Screen(
+      color: _panel,
       child: SimpleParallaxWidget(
-        scrollDirection: Axis.horizontal,
         children: <Widget>[
           SizedBox(
-            width: 340,
+            height: 260,
             child: _Prose(
-              'Two days on the ridge',
-              'The path leaves the road just past the bridge and climbs steadily '
-                  'for the first hour.',
+              'Sideways, with the row',
+              'Each block below reads its axis from the row it sits in, so it '
+                  'slides sideways as the row moves. Drag it.',
             ),
           ),
-          SimpleParallaxItem(
-            image: _background,
-            width: 380,
-            parallax: ParallaxProperties(overscan: 2),
-            child: _Caption('DAY ONE', 'The southern pass'),
-          ),
+          _Carousel(),
           SizedBox(
-            width: 340,
+            height: 260,
             child: _Prose(
-              'Where to stop',
-              'The refuge sits a little below the col. It fills up quickly in '
-                  'August, so book ahead.',
+              'Or down, with the page',
+              'The same row, told to follow the page. Dragging the row leaves '
+                  'the images alone; scrolling the page slides them.',
             ),
           ),
-          SimpleParallaxItem(
-            image: _background,
-            width: 380,
-            parallax: ParallaxProperties(speed: 0.4, overscan: 2),
-            child: _Caption('DAY TWO', 'Down to the lake'),
-          ),
+          _Carousel(scrollAxis: Axis.vertical),
           SizedBox(
-            width: 340,
+            height: 420,
             child: _Prose(
-              'Getting back',
-              'The last bus leaves at ten past seven, from the same stop.',
+              'Which one to follow',
+              'Left alone, a block follows the nearest scrollable. scrollAxis '
+                  'names the one it should follow when they are nested.',
             ),
           ),
         ],
@@ -750,30 +854,106 @@ class ItemHorizontalDemo extends StatelessWidget {
   }
 }
 
-/// The two directions of `zoom`, one under the other.
+/// A row of blocks following the scrollable on [scrollAxis].
+class _Carousel extends StatelessWidget {
+  const _Carousel({this.scrollAxis});
+
+  final Axis? scrollAxis;
+
+  static const List<(String, String)> _days = <(String, String)>[
+    ('DAY ONE', 'The southern pass'),
+    ('DAY TWO', 'Down to the lake'),
+    ('DAY THREE', 'The long ridge'),
+    ('DAY FOUR', 'Back to the village'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 380,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: _days.length,
+        separatorBuilder: (BuildContext context, int index) =>
+            const SizedBox(width: 14),
+        itemBuilder: (BuildContext context, int index) => SimpleParallaxItem(
+          image: _background,
+          width: 300,
+          borderRadius: BorderRadius.circular(18),
+          parallax: const ParallaxProperties(overscan: 1.8),
+          scrollAxis: scrollAxis,
+          child: _Caption(_days[index].$1, _days[index].$2),
+        ),
+      ),
+    );
+  }
+}
+
+/// Five hundred blocks, each created as it scrolls into view.
 ///
-/// Both blocks are given the same `speed` and the same `overscan`, so the only
-/// thing between them is the sign of `zoom`. The first pushes in as it crosses,
-/// the second starts enlarged and comes to rest.
+/// `SimpleParallaxWidget.builder` takes an `itemBuilder` instead of a list, so
+/// only the blocks near the screen exist at any time, however long the list.
+class ItemBuilderDemo extends StatelessWidget {
+  /// Creates the builder demo.
+  const ItemBuilderDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Screen(
+      color: _panel,
+      child: SimpleParallaxWidget.builder(
+        itemCount: 500,
+        itemBuilder: (BuildContext context, int index) {
+          final _Note note = _noteAt(index ~/ 2);
+          if (index.isOdd) {
+            return SizedBox(
+              height: 150,
+              child: _Prose(note.title, note.detail),
+            );
+          }
+          return SimpleParallaxItem(
+            image: _background,
+            height: 320,
+            parallax: ParallaxProperties(
+              speed: index % 4 == 0 ? 1 : 0.5,
+              overscan: 1.8,
+            ),
+            child: _Caption('No. ${index + 1} OF 500', note.title),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The two directions of `zoom`, then the two directions of `blur`.
+///
+/// All four blocks are given the same `overscan`, so what differs between them
+/// is the effect and its sign. A positive zoom pushes in as the block crosses,
+/// a negative one starts enlarged and comes to rest; a positive blur softens,
+/// a negative one sharpens. The captions stay sharp throughout, since only the
+/// background is filtered.
 ///
 /// A screenful of prose sits in front of each, so the block enters from below
 /// and its whole range is seen. A block already on screen when the page opens
 /// has spent part of that range before the first scroll.
-class ItemZoomDemo extends StatelessWidget {
-  /// Creates the zoom demo.
-  const ItemZoomDemo({super.key});
+class ItemZoomBlurDemo extends StatelessWidget {
+  /// Creates the zoom and blur demo.
+  const ItemZoomBlurDemo({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const _Screen(
+      color: _panel,
       child: SimpleParallaxWidget(
         children: <Widget>[
           _Screenful(
             child: _Prose(
-              'Two blocks, one difference',
-              'Both drift at the same speed. Only the sign of their zoom is '
-                  'not the same, so what you see between them is the zoom and '
-                  'nothing else. Scroll on.',
+              'The zoom, both ways',
+              'The first block holds its drift still, so what you see is the '
+                  'zoom and nothing else. It pushes in as the block crosses. '
+                  'Scroll on.',
             ),
           ),
           SimpleParallaxItem(
@@ -787,7 +967,8 @@ class ItemZoomDemo extends StatelessWidget {
             child: _Prose(
               'And the other way',
               'The same range read from the other end. It starts half again '
-                  'as large and settles at its own size as the block leaves.',
+                  'as large and settles at its own size as the block leaves. '
+                  'Neither goes below its own size.',
             ),
           ),
           SimpleParallaxItem(
@@ -799,37 +980,10 @@ class ItemZoomDemo extends StatelessWidget {
           ),
           _Screenful(
             child: _Prose(
-              'Neither goes below its own size',
-              'A background smaller than the block would show the page down '
-                  'both sides, so the scale stops at one whichever way it runs.',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The two directions of `blur`, one under the other.
-///
-/// Laid out like the zoom demo, and read the same way: the first block is sharp
-/// as it arrives and soft as it goes, the second the other way round. The
-/// caption stays sharp either way, since only the background is filtered.
-class ItemBlurDemo extends StatelessWidget {
-  /// Creates the blur demo.
-  const ItemBlurDemo({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const _Screen(
-      child: SimpleParallaxWidget(
-        children: <Widget>[
-          _Screenful(
-            child: _Prose(
-              'Sharp, then soft',
+              'The blur, both ways',
               'A blur reads in logical pixels rather than as a fraction, so '
                   'the figure is a sigma. This one starts at nothing and ends '
-                  'at sixteen. Scroll on.',
+                  'at sixteen.',
             ),
           ),
           SimpleParallaxItem(
@@ -842,8 +996,7 @@ class ItemBlurDemo extends StatelessWidget {
           _Screenful(
             child: _Prose(
               'And the other way',
-              'The same range read from the other end. It arrives soft and '
-                  'comes into focus as the block crosses.',
+              'It arrives soft and comes into focus as the block crosses.',
             ),
           ),
           SimpleParallaxItem(
@@ -879,6 +1032,7 @@ class ItemReachDemo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _Screen(
+      color: _panel,
       child: SimpleParallaxWidget(
         children: <Widget>[
           _Screenful(
@@ -950,6 +1104,7 @@ class ItemOverlayDemo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _Screen(
+      color: _panel,
       child: SimpleParallaxWidget(
         children: <Widget>[
           _Screenful(
@@ -1058,11 +1213,14 @@ class ContainerCustomDemo extends StatelessWidget {
   }
 }
 
-/// Item mode with two layers an `ImageProvider` could not express.
+/// Item mode with three layers an `ImageProvider` could not express.
 ///
 /// The first block drifts a gradient, the second the asset tinted through a
-/// `ColorFiltered`. Anything wrapping the image is the caller's business now,
-/// `loadingBuilder` and `errorBuilder` included.
+/// `ColorFiltered`, the third a looping video. Anything wrapping the image is
+/// the caller's business, `loadingBuilder` and `errorBuilder` included. The
+/// video carries an aspect ratio of its own, so it goes through a `FittedBox` to
+/// cover the layer: that is the work `fit: BoxFit.cover` does for an image. The
+/// same layers work behind a whole page, in container mode.
 class ItemCustomDemo extends StatelessWidget {
   /// Creates the custom background item demo.
   const ItemCustomDemo({super.key});
@@ -1070,6 +1228,7 @@ class ItemCustomDemo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const _Screen(
+      color: _panel,
       child: SimpleParallaxWidget(
         children: <Widget>[
           SizedBox(
@@ -1092,13 +1251,13 @@ class ItemCustomDemo extends StatelessWidget {
                 ),
               ),
             ),
-            child: _Caption('DAY ONE', 'The southern pass'),
+            child: _Caption('A GRADIENT', 'The southern pass'),
           ),
           SizedBox(
             height: 230,
             child: _Prose(
-              'And the asset, tinted',
-              'Wrapping the image is the caller business now, which is how a '
+              'The asset, tinted',
+              'Wrapping the image is the caller business, which is how a '
                   'ColorFiltered gets in front of it.',
             ),
           ),
@@ -1112,90 +1271,21 @@ class ItemCustomDemo extends StatelessWidget {
               ),
               child: Image(image: _background, fit: BoxFit.cover),
             ),
-            child: _Caption('DAY TWO', 'Down to the lake'),
+            child: _Caption('A TINTED IMAGE', 'Down to the lake'),
           ),
-          SizedBox(
-            height: 300,
-            child: _Prose(
-              'Getting back',
-              'The last bus leaves at ten past seven, from the same stop.',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Container mode over a looping video.
-///
-/// The layer is a `VideoPlayer`, which carries an aspect ratio of its own, so it
-/// goes through a `FittedBox` to cover the layer: that is the work
-/// `fit: BoxFit.cover` does for an image.
-class ContainerVideoDemo extends StatelessWidget {
-  /// Creates the video background demo.
-  const ContainerVideoDemo({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return _Screen(
-      child: SimpleParallaxContainer(
-        background: const _VideoBackground(),
-        parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 28),
-          child: Column(
-            children: List<Widget>.generate(
-              20,
-              (int index) => _Row(_noteAt(index)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Item mode over the same video.
-///
-/// The block owns its player, so the video exists only while the block is in
-/// the tree, and it slides inside the block the way an image would.
-class ItemVideoDemo extends StatelessWidget {
-  /// Creates the video item demo.
-  const ItemVideoDemo({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const _Screen(
-      child: SimpleParallaxWidget(
-        children: <Widget>[
           SizedBox(
             height: 230,
             child: _Prose(
-              'Two days on the ridge',
-              'The block below drifts a video rather than an image. It owns '
-                  'its player, so the video lives only while the block does.',
+              'A video',
+              'The block below owns its player, so the video lives only while '
+                  'the block does, and slides the way an image would.',
             ),
           ),
           SimpleParallaxItem(
             height: 470,
             parallax: ParallaxProperties(overscan: 2),
             background: _VideoBackground(),
-            child: _Caption('DAY ONE', 'The southern pass'),
-          ),
-          SizedBox(
-            height: 230,
-            child: _Prose(
-              'Where to stop',
-              'The one below is the asset again, in the same block at the '
-                  'same drift.',
-            ),
-          ),
-          SimpleParallaxItem(
-            image: _background,
-            height: 430,
-            parallax: ParallaxProperties(overscan: 2),
-            child: _Caption('DAY TWO', 'Down to the lake'),
+            child: _Caption('A VIDEO', 'At the refuge'),
           ),
           SizedBox(
             height: 300,

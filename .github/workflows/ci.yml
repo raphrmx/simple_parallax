@@ -44,6 +44,12 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      # Opens every screen of the example and scrolls it, with and without
+      # reduced motion, so a demo that throws is caught before the live demo is.
+      - name: Run the example's tests
+        working-directory: example
+        run: flutter test test
+
       # Fails on a packaging regression, such as a CHANGELOG that no longer
       # mentions the version in pubspec.yaml.
       #
@@ -55,3 +61,87 @@ jobs:
         run: |
           git checkout -- .
           flutter pub publish --dry-run
+
+  # The oldest Flutter the pubspec admits. The package cannot be developed on it
+  # (its dev dependencies need a newer Dart), so it is compiled and run from a
+  # throwaway app instead, which is what a user on that Flutter would do. Catches
+  # an API the floor does not have, such as `Matrix4.translateByDouble` against
+  # the `vector_math` 3.22 pins.
+  floor:
+    runs-on: ubuntu-latest
+
+    name: floor (3.22.2)
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: simple_parallax
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.22.2
+          channel: stable
+
+      - name: Build a consumer app
+        run: |
+          mkdir -p floor/test
+          cat > floor/pubspec.yaml <<'YAML'
+          name: floor
+          publish_to: none
+          environment:
+            sdk: ^3.4.0
+          dependencies:
+            flutter:
+              sdk: flutter
+            simple_parallax:
+              path: ../simple_parallax
+          dev_dependencies:
+            flutter_test:
+              sdk: flutter
+          YAML
+          cat > floor/test/floor_test.dart <<'DART'
+          import 'package:flutter/widgets.dart';
+          import 'package:flutter_test/flutter_test.dart';
+          import 'package:simple_parallax/simple_parallax.dart';
+
+          void main() {
+            testWidgets('builds and scrolls every mode', (WidgetTester tester) async {
+              await tester.pumpWidget(
+                MediaQuery(
+                  data: const MediaQueryData(size: Size(800, 600)),
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: SimpleParallaxWidget(
+                      children: <Widget>[
+                        SizedBox(
+                          height: 300,
+                          child: SimpleParallaxContainer(
+                            background: const SizedBox(),
+                            zoom: const ZoomProperties(0.3),
+                            blur: const BlurProperties(4),
+                            child: const SizedBox(height: 900),
+                          ),
+                        ),
+                        const SimpleParallaxItem(
+                          background: SizedBox(),
+                          height: 300,
+                          zoom: ZoomProperties(0.3),
+                          blur: BlurProperties(4),
+                        ),
+                        const SizedBox(height: 2000),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+              await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));
+              await tester.pump();
+            });
+          }
+          DART
+
+      - name: Compile and run it
+        working-directory: floor
+        run: |
+          flutter pub get
+          flutter test

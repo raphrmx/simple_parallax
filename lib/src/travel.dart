@@ -5,7 +5,36 @@
 /// same, so they are worked out in one place.
 library;
 
+import 'package:flutter/rendering.dart';
+
 import 'properties.dart';
+
+/// The transform that draws a background moved by [offset], then scaled by
+/// [scale] about [about], a point of the box it is drawn into.
+///
+/// Scaling after the move keeps the drift from being scaled with it, and about
+/// the middle of what is on screen, which is where the eye is.
+///
+/// Built from `diagonal3Values` and `setTranslationRaw` rather than
+/// `translateByDouble` and `scaleByDouble`, which the `vector_math` pinned by
+/// the oldest Flutter this package supports does not have.
+Matrix4 placed(Offset offset, double scale, Offset about) {
+  final Matrix4 move = Matrix4.translationValues(offset.dx, offset.dy, 0);
+  if (scale == 1) return move;
+  return Matrix4.diagonal3Values(scale, scale, 1)
+    ..setTranslationRaw(about.dx * (1 - scale), about.dy * (1 - scale), 0)
+    ..multiply(move);
+}
+
+/// Where a background stands along its travel, from `0` to `1`.
+///
+/// Worked out once per paint by the flow that places the background, and read
+/// by the blur painted inside that flow straight after, so the two agree on the
+/// frame being drawn and the geometry is measured once.
+class TravelProgress {
+  /// The progress as of the last paint, `0` before the first.
+  double value = 0;
+}
 
 /// Step the blur sigma is rounded to, so the filter is rebuilt only when it
 /// changes visibly.

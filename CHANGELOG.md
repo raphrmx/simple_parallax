@@ -1,5 +1,70 @@
 # SimpleParallax Versions
 
+## 2.1.0
+
+### Added
+
+- `respectReducedMotion` on both widgets, on by default. When the platform asks for reduced motion
+  (Reduce Motion on iOS, Remove animations on Android, `prefers-reduced-motion` on the web), the
+  container holds its background at the top of its travel and each item draws its block as it looks
+  in the middle of the screen, zoom and blur included. The smooth wheel lands each notch in one step,
+  still bringing it to a horizontal view. Pass `false` for the previous behaviour.
+- `controller` and `physics` on `SimpleParallaxContainer`, as `SimpleParallaxWidget` already had.
+- `SmoothScrollController` is exported. Given as the `controller` of either scroll view, it keeps
+  `smooth` on, so the view can be driven from outside with the wheel still eased. Any other
+  controller turns `smooth` off unless it is asked for, and asking for both is an error.
+- `SimpleParallaxWidget.builder`, which creates its blocks as they come into view instead of taking
+  them all as a list.
+- `decodeAtDisplaySize` on both widgets, on by default. An `image` is decoded at the size it is
+  drawn, worked out from the layer, the overscan, the zoom and the pixel density, instead of at full
+  resolution: a photo of 4000 by 3000 pixels in a block of 300 no longer sits in memory at full
+  size. The size is rounded up so a small resize reuses the decode, and an image a `ResizeImage`
+  already sizes is left alone. Turn it off when one decoded copy should serve a full-size view of
+  the same image elsewhere, and when the image is warmed up with `precacheImage`, which decodes the
+  full-size copy the widget would no longer use.
+- `alignment` and `borderRadius` on `SimpleParallaxItem`. `alignment` was only on the container;
+  `borderRadius` clips the whole block, which a card needs and which took a `ClipRRect` around the
+  item until now.
+- `restorationId`, `keyboardDismissBehavior` and `clipBehavior` on both scroll views, handed to the
+  `CustomScrollView` under them.
+- `scrollAxis` on `SimpleParallaxItem`, to follow a scrollable further up than the nearest one. A
+  block in a horizontal carousel inside a vertical page can slide with the page instead of the
+  carousel. The nearest scrollable still lays the block out, so `height` and `width` default as
+  before.
+
+### Changed
+
+- `smooth` left unset is off on iOS and Android. There is no wheel to ease there, and the controller
+  the easing needs kept the view from being the primary one, so a tap on the iOS status bar no
+  longer scrolled it back to the top. It stays on on desktop and the web, and `smooth: true` still
+  turns it on anywhere.
+- `SimpleParallaxContainer` paints its background from a `Flow` bound to the scroll metrics, as
+  item mode already did. A scroll used to rebuild the transforms and the blur around the layer on
+  every frame; it now repaints that layer and rebuilds nothing.
+- With a blur, the progress of the background is measured once per frame instead of twice: the flow
+  works it out and the blur, painted inside the flow, reads it. The layer keeps a repaint boundary of
+  its own, so a scroll moves it without drawing it again.
+- The README is down to what it takes to start: the two widgets, the four effects, and a short list
+  of what else there is. The parameter tables are left to the API reference, which already carried
+  every one, and the 1.x migration table moved to the 2.0.0 entry below.
+- The example has eleven screens instead of thirteen, grouped in the menu. The zoom and the blur
+  share one screen, the video joined the other widget backgrounds, and the sideways items became a
+  carousel in a page. It gains the builder, `scrollAxis`, a container `controller`, and a switch that
+  shows every screen under reduced motion.
+
+### Fixed
+
+- Scrolls running the other way. A horizontal container on a right-to-left page drifted its
+  background against the content instead of with it. An item in a right-to-left list, or in a list
+  with `reverse: true`, read its crossing backwards, so a zoom shrank, a blur cleared and `reach`
+  counted from the wrong end.
+- Item mode did not compile on the oldest Flutter the package admits, 3.22 among them: the zoom used
+  `Matrix4.translateByDouble` and `scaleByDouble`, which the `vector_math` those versions pin does not
+  have. A CI job now builds and runs the package on 3.22.2.
+- The background is left out of the semantics tree, in both modes and whether it is an `image` or a
+  `background` widget. An unlabelled image used to mark its surroundings as an image, so a screen
+  reader announced an item's caption as "Chapter one, image".
+
 ## 2.0.2
 
 ### Changed
@@ -60,7 +125,22 @@ Every effect is configured on its own object, and a fixed overlay joins them.
 - `autoSpeed`. A `speed` of `1`, which is the default, spends the whole travel over the whole
   scroll, which is exactly what the flag did.
 - The flat `speed`, `overscan`, `zoom`, `blur`, `reach` and `back` parameters, replaced by the four
-  objects above. The README has a migration table.
+  objects above, as follows.
+
+### Migration
+
+| Before | Now |
+| --- | --- |
+| `speed: 0.4, overscan: 2` | `parallax: ParallaxProperties(speed: 0.4, overscan: 2)` |
+| `autoSpeed: true` | nothing: `speed` defaults to `1`, which is the same thing |
+| `speed: 0.3` on a container | a fraction now, not a travel per pixel. Pick one between `0` and `1` |
+| `zoom: 0.25` | `zoom: ZoomProperties(0.25)` |
+| `blur: 16` | `blur: BlurProperties(16)` |
+| `zoom: 0.6, reach: 0.5, back: true` | `zoom: ZoomProperties(0.6, reach: 0.5, back: true)` |
+| a hand-rolled scrim in `child` | `overlay: OverlayProperties.darken(0.45)` |
+
+Nothing else moves, except `smooth`, which now defaults to `true`. Pass `smooth: false` for the
+platform wheel behaviour.
 
 ## 1.3.0
 

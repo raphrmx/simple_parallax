@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_parallax/simple_parallax.dart';
+import 'package:simple_parallax/src/display_size_image.dart';
 // Not exported: the overlay is an implementation detail the
 // tests reach for to find what the widgets drew.
 import 'package:simple_parallax/src/overlay_layer.dart';
@@ -59,6 +60,19 @@ const Key _layerKey = Key('layer');
 /// The layer itself. A [ColoredBox] with no child fills the box it is given,
 /// which is what the parallax hands it.
 const Widget _layer = ColoredBox(key: _layerKey, color: Color(0xFF1A237E));
+
+/// A desktop, where the wheel is eased unless told otherwise. Tests run as
+/// Android by default, where it is not.
+final TargetPlatformVariant _desktop =
+    TargetPlatformVariant.only(TargetPlatform.windows);
+
+/// [child] on a platform that asks for reduced motion.
+Widget _reducedMotion(Widget child) => Builder(
+      builder: (BuildContext context) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(disableAnimations: true),
+        child: child,
+      ),
+    );
 
 /// The blur over the one background under test, or `null` when the background
 /// is not blurred at all.
@@ -359,6 +373,71 @@ void main() {
       );
     });
 
+    testWidgets('follows a controller it is given', (
+      WidgetTester tester,
+    ) async {
+      final ScrollController controller = ScrollController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            controller: controller,
+            parallax: const ParallaxProperties(overscan: 2),
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      final double atRest = tester.getTopLeft(find.byKey(_layerKey)).dy;
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pump();
+
+      expect(
+        atRest - tester.getTopLeft(find.byKey(_layerKey)).dy,
+        moreOrLessEquals(600, epsilon: 0.01),
+      );
+    });
+
+    test('stands the smooth wheel down for a controller', () {
+      final SimpleParallaxContainer container = SimpleParallaxContainer(
+        background: _layer,
+        controller: ScrollController(),
+        child: const SizedBox(),
+      );
+
+      expect(container.smooth, isFalse);
+      expect(
+        () => SimpleParallaxContainer(
+          background: _layer,
+          controller: ScrollController(),
+          smooth: true,
+          child: const SizedBox(),
+        ),
+        throwsAssertionError,
+      );
+    });
+
+    testWidgets('hands its physics to the scroll view', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            physics: const NeverScrollableScrollPhysics(),
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      await tester.drag(find.text('Item 0'), const Offset(0, -300));
+      await tester.pump();
+
+      expect(_position(tester).pixels, 0);
+    });
+
     testWidgets('lets a scroll notification keep bubbling', (
       WidgetTester tester,
     ) async {
@@ -494,6 +573,111 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    /// A carousel of one block, a screenful down a vertical page, the block
+    /// following the scrollable on [scrollAxis].
+    Future<void> pumpCarousel(WidgetTester tester, Axis? scrollAxis) =>
+        tester.pumpWidget(
+          _app(
+            ListView(
+              children: <Widget>[
+                const SizedBox(height: 600),
+                SizedBox(
+                  height: 300,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: <Widget>[
+                      SimpleParallaxItem(
+                        background: _layer,
+                        width: 400,
+                        scrollAxis: scrollAxis,
+                      ),
+                      const SizedBox(width: 2000),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 1400),
+              ],
+            ),
+          ),
+        );
+
+    ScrollPosition page(WidgetTester tester) =>
+        (tester.state(find.byType(Scrollable).first) as ScrollableState)
+            .position;
+    ScrollPosition carousel(WidgetTester tester) =>
+        (tester.state(find.byType(Scrollable).at(1)) as ScrollableState)
+            .position;
+
+    /// Where the layer stands inside the block.
+    Offset layerInBlock(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(_layerKey)) -
+        tester.getTopLeft(find.byType(SimpleParallaxItem));
+
+    testWidgets('follows the nearest scrollable by default', (
+      WidgetTester tester,
+    ) async {
+      await pumpCarousel(tester, null);
+      page(tester).jumpTo(300);
+      await tester.pump();
+      final Offset before = layerInBlock(tester);
+
+      page(tester).jumpTo(500);
+      await tester.pump();
+      expect(layerInBlock(tester), before);
+
+      carousel(tester).jumpTo(100);
+      await tester.pump();
+      expect(layerInBlock(tester).dx, isNot(before.dx));
+      expect(layerInBlock(tester).dy, before.dy);
+    });
+
+    testWidgets('follows the page around a carousel on the axis it is given', (
+      WidgetTester tester,
+    ) async {
+      await pumpCarousel(tester, Axis.vertical);
+      page(tester).jumpTo(300);
+      await tester.pump();
+      final Offset before = layerInBlock(tester);
+
+      // Laid out by the carousel, drawn over the height of the block.
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(400, 450));
+
+      carousel(tester).jumpTo(100);
+      await tester.pump();
+      expect(layerInBlock(tester), before);
+
+      page(tester).jumpTo(500);
+      await tester.pump();
+      expect(layerInBlock(tester).dx, before.dx);
+      expect(layerInBlock(tester).dy, isNot(before.dy));
+    });
+
+    testWidgets('holds still with no scrollable on that axis', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            scrollDirection: Axis.horizontal,
+            children: const <Widget>[
+              SimpleParallaxItem(
+                background: _layer,
+                width: 400,
+                scrollAxis: Axis.vertical,
+              ),
+              SizedBox(width: 2000),
+            ],
+          ),
+        ),
+      );
+      final Offset before = layerInBlock(tester);
+
+      _position(tester).jumpTo(100);
+      await tester.pump();
+
+      expect(layerInBlock(tester), before);
+    });
+
     test('rejects a speed outside 0..1', () {
       expect(() => ParallaxProperties(speed: 2), throwsAssertionError);
     });
@@ -542,6 +726,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Last'), findsOneWidget);
+    });
+
+    testWidgets('creates its blocks only as they come into view', (
+      WidgetTester tester,
+    ) async {
+      final Set<int> created = <int>{};
+
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxWidget.builder(
+            itemCount: 100,
+            itemBuilder: (BuildContext context, int index) {
+              created.add(index);
+              return SimpleParallaxItem(
+                background: _layer,
+                height: 300,
+                child: Text('Block $index'),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(created.length, lessThan(10));
+
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(find.text('Block 99'), findsOneWidget);
+      expect(created, isNot(contains(100)));
     });
 
     testWidgets('pads the list it is given', (WidgetTester tester) async {
@@ -817,6 +1032,73 @@ void main() {
       expect(_position(tester).pixels, 0);
     });
 
+    testWidgets('lands a notch at once under reduced motion', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          _reducedMotion(SimpleParallaxWidget(smooth: true, children: _tall())),
+        ),
+      );
+
+      await _wheel(tester, const Offset(0, 120));
+      await tester.pump();
+
+      expect(_position(tester).pixels, 120);
+    });
+
+    testWidgets('still brings the wheel sideways under reduced motion', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          _reducedMotion(
+            SimpleParallaxWidget(
+              scrollDirection: Axis.horizontal,
+              smooth: true,
+              children: _wide(),
+            ),
+          ),
+        ),
+      );
+
+      await _wheel(tester, const Offset(0, 120));
+      await tester.pump();
+
+      expect(_position(tester).pixels, 120);
+    });
+
+    testWidgets(
+      'eases a container wheel told to ignore reduced motion',
+      (
+        WidgetTester tester,
+      ) async {
+        Widget page({required bool respect}) => _app(
+              _reducedMotion(
+                SimpleParallaxContainer(
+                  background: _layer,
+                  respectReducedMotion: respect,
+                  child: Column(children: _tall()),
+                ),
+              ),
+            );
+
+        await tester.pumpWidget(page(respect: true));
+        await _wheel(tester, const Offset(0, 120));
+        await tester.pump();
+        expect(_position(tester).pixels, 120);
+
+        await tester.pumpWidget(page(respect: false));
+        await _wheel(tester, const Offset(0, 120));
+        await tester.pump();
+        expect(_position(tester).pixels, lessThan(240));
+
+        await tester.pumpAndSettle();
+        expect(_position(tester).pixels, 240);
+      },
+      variant: _desktop,
+    );
+
     testWidgets('hands the wheel to the page once a horizontal view is done', (
       WidgetTester tester,
     ) async {
@@ -887,6 +1169,161 @@ void main() {
 
       expect(tester.getTopLeft(find.byKey(_layerKey)).dy, lessThan(before.dy));
     });
+
+    testWidgets(
+      'keeps easing a container on a SmoothScrollController',
+      (
+        WidgetTester tester,
+      ) async {
+        final SmoothScrollController controller = SmoothScrollController();
+        addTearDown(controller.dispose);
+
+        await tester.pumpWidget(
+          _app(
+            SimpleParallaxContainer(
+              background: _layer,
+              controller: controller,
+              parallax: const ParallaxProperties(overscan: 2),
+              child: Column(children: _tall()),
+            ),
+          ),
+        );
+
+        await _wheel(tester, const Offset(0, 120));
+        await tester.pump();
+        expect(controller.offset, lessThan(120));
+        await tester.pumpAndSettle();
+        expect(controller.offset, 120);
+
+        // Driven from outside as well, background included.
+        final double before = tester.getTopLeft(find.byKey(_layerKey)).dy;
+        controller.jumpTo(controller.position.maxScrollExtent);
+        await tester.pump();
+        expect(tester.getTopLeft(find.byKey(_layerKey)).dy, lessThan(before));
+      },
+      variant: _desktop,
+    );
+
+    testWidgets('brings the wheel sideways on a SmoothScrollController', (
+      WidgetTester tester,
+    ) async {
+      final SmoothScrollController controller = SmoothScrollController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxWidget(
+            scrollDirection: Axis.horizontal,
+            controller: controller,
+            children: _wide(),
+          ),
+        ),
+      );
+
+      await _wheel(tester, const Offset(0, 120));
+      await tester.pumpAndSettle();
+
+      expect(controller.offset, 120);
+    });
+
+    testWidgets('leaves a SmoothScrollController it was given undisposed', (
+      WidgetTester tester,
+    ) async {
+      final SmoothScrollController controller = SmoothScrollController();
+
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            controller: controller,
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+      await tester.pumpWidget(_app(const SizedBox()));
+
+      // Disposing twice would throw in debug.
+      controller.dispose();
+      expect(tester.takeException(), isNull);
+    });
+
+    test('stays on for a SmoothScrollController', () {
+      final SmoothScrollController controller = SmoothScrollController();
+      addTearDown(controller.dispose);
+
+      expect(
+        SimpleParallaxWidget(controller: controller, children: const <Widget>[])
+            .smooth,
+        isTrue,
+      );
+      expect(
+        SimpleParallaxContainer(
+          background: _layer,
+          controller: controller,
+          smooth: true,
+          child: const SizedBox(),
+        ).smooth,
+        isTrue,
+      );
+    });
+
+    testWidgets(
+      'stays off on a phone, leaving the view primary',
+      (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          _app(
+            SimpleParallaxContainer(
+              background: _layer,
+              child: Column(children: _tall()),
+            ),
+          ),
+        );
+
+        // No controller of its own, so a tap on the iOS status bar reaches it.
+        expect(
+          tester
+              .widget<CustomScrollView>(find.byType(CustomScrollView))
+              .controller,
+          isNull,
+        );
+        await _wheel(tester, const Offset(0, 120));
+        await tester.pump();
+        expect(_position(tester).pixels, 120);
+      },
+      variant: TargetPlatformVariant(
+        <TargetPlatform>{TargetPlatform.android, TargetPlatform.iOS},
+      ),
+    );
+
+    testWidgets(
+      'eases on a phone when asked to',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          _app(
+            SimpleParallaxWidget(smooth: true, children: _tall()),
+          ),
+        );
+
+        await _wheel(tester, const Offset(0, 120));
+        await tester.pump();
+        expect(_position(tester).pixels, lessThan(120));
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
+
+    testWidgets(
+      'eases on a desktop by default',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(_app(SimpleParallaxWidget(children: _tall())));
+
+        await _wheel(tester, const Offset(0, 120));
+        await tester.pump();
+        expect(_position(tester).pixels, lessThan(120));
+      },
+      variant: _desktop,
+    );
 
     test('is on when nothing stands in its way', () {
       expect(const SimpleParallaxWidget(children: <Widget>[]).smooth, isTrue);
@@ -1728,6 +2165,547 @@ void main() {
         lessThan(layerBefore),
       );
       expect(tester.getRect(find.byType(OverlayLayer)), before);
+    });
+  });
+
+  group('semantics', () {
+    /// Whether anything on screen is announced as an image.
+    bool anImageIn(WidgetTester tester) {
+      bool found = false;
+      bool visit(SemanticsNode node) {
+        found = found || node.getSemanticsData().flagsCollection.isImage;
+        node.visitChildren(visit);
+        return true;
+      }
+
+      visit(tester.getSemantics(find.byType(MaterialApp)));
+      return found;
+    }
+
+    testWidgets('leaves an item background out', (WidgetTester tester) async {
+      final SemanticsHandle semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SimpleParallaxItem(
+                image: _image,
+                height: 300,
+                child: const Center(child: Text('Chapter one')),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(anImageIn(tester), isFalse);
+      semantics.dispose();
+    });
+
+    testWidgets('leaves a container background out', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: _image,
+            child: const Center(child: Text('Page')),
+          ),
+        ),
+      );
+
+      expect(anImageIn(tester), isFalse);
+      semantics.dispose();
+    });
+  });
+
+  group('reduced motion', () {
+    Future<void> pumpPage(WidgetTester tester, {required bool respect}) =>
+        tester.pumpWidget(
+          _app(
+            _reducedMotion(
+              SimpleParallaxContainer(
+                background: _layer,
+                parallax: const ParallaxProperties(overscan: 2),
+                zoom: const ZoomProperties(0.5),
+                respectReducedMotion: respect,
+                child: Column(children: _tall()),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('holds a container background still', (
+      WidgetTester tester,
+    ) async {
+      await pumpPage(tester, respect: true);
+      final Rect atRest = tester.getRect(find.byKey(_layerKey));
+
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(tester.getRect(find.byKey(_layerKey)), atRest);
+    });
+
+    testWidgets('moves it anyway when told to', (WidgetTester tester) async {
+      await pumpPage(tester, respect: false);
+      final Rect atRest = tester.getRect(find.byKey(_layerKey));
+
+      final ScrollPosition position = _position(tester);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+
+      expect(tester.getRect(find.byKey(_layerKey)), isNot(atRest));
+    });
+
+    /// A block of 400 below a screenful, with a background of 600 at the
+    /// default overscan, so a centred one stands 100 above the block.
+    Future<void> pumpBlock(WidgetTester tester) => tester.pumpWidget(
+          _app(
+            _reducedMotion(
+              ListView(
+                children: const <Widget>[
+                  SizedBox(height: 600),
+                  SimpleParallaxItem(
+                    background: _layer,
+                    height: 400,
+                    blur: BlurProperties(12),
+                  ),
+                  SizedBox(height: 1400),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    double layerInBlock(WidgetTester tester) =>
+        tester.getTopLeft(find.byKey(_layerKey)).dy -
+        tester.getTopLeft(find.byType(SimpleParallaxItem)).dy;
+
+    testWidgets('holds a block background centred', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(tester);
+      // Just in, where a moving background would still sit near one end.
+      _position(tester).jumpTo(100);
+      await tester.pump();
+      expect(layerInBlock(tester), -100);
+
+      _position(tester).jumpTo(900);
+      await tester.pump();
+
+      expect(layerInBlock(tester), -100);
+    });
+
+    testWidgets('holds a block blur at its mid-crossing value', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(tester);
+      _position(tester).jumpTo(100);
+      await tester.pump();
+      expect(_blur(tester), _blurOf(6));
+
+      _position(tester).jumpTo(900);
+      await tester.pump();
+
+      expect(_blur(tester), _blurOf(6));
+    });
+  });
+
+  group('a scroll running the other way', () {
+    testWidgets('drifts a right-to-left container with its content', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          Directionality(
+            textDirection: TextDirection.rtl,
+            child: SimpleParallaxContainer(
+              background: _layer,
+              scrollDirection: Axis.horizontal,
+              parallax: const ParallaxProperties(overscan: 2),
+              child: Row(children: _wide()),
+            ),
+          ),
+        ),
+      );
+
+      final double content = tester.getTopLeft(find.text('Item 0')).dx;
+      final Rect atRest = tester.getRect(find.byKey(_layerKey));
+      // Starts against the right edge, the end the content comes from.
+      expect(atRest.right, 800);
+
+      _position(tester).jumpTo(400);
+      await tester.pump();
+
+      final double contentMoved =
+          tester.getTopLeft(find.text('Item 0')).dx - content;
+      final double backgroundMoved =
+          tester.getTopLeft(find.byKey(_layerKey)).dx - atRest.left;
+      expect(contentMoved, 400);
+      expect(backgroundMoved, greaterThan(0));
+      expect(backgroundMoved, lessThan(contentMoved));
+    });
+
+    /// A block of 400 in a list of [direction], a screenful from its start.
+    Future<void> pumpBlock(
+      WidgetTester tester, {
+      TextDirection direction = TextDirection.ltr,
+      Axis axis = Axis.horizontal,
+      bool reverse = false,
+    }) =>
+        tester.pumpWidget(
+          _app(
+            Directionality(
+              textDirection: direction,
+              child: ListView(
+                scrollDirection: axis,
+                reverse: reverse,
+                children: const <Widget>[
+                  SizedBox(width: 800, height: 600),
+                  SimpleParallaxItem(
+                    background: _layer,
+                    width: 400,
+                    height: 400,
+                    zoom: ZoomProperties(0.5),
+                  ),
+                  SizedBox(width: 1200, height: 1400),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    /// The block and its layer at [scrolled], as the block crosses.
+    Future<(Rect, Rect)> at(WidgetTester tester, double scrolled) async {
+      _position(tester).jumpTo(scrolled);
+      await tester.pump();
+      return (
+        tester.getRect(find.byType(SimpleParallaxItem)),
+        tester.getRect(find.byKey(_layerKey)),
+      );
+    }
+
+    testWidgets('zooms a right-to-left block in as it crosses', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(tester, direction: TextDirection.rtl);
+
+      final (Rect _, Rect entering) = await at(tester, 200);
+      final (Rect _, Rect leaving) = await at(tester, 1000);
+
+      expect(leaving.width, greaterThan(entering.width));
+    });
+
+    testWidgets('lets a right-to-left background lag behind its block', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(tester, direction: TextDirection.rtl);
+
+      final (Rect block1, Rect layer1) = await at(tester, 500);
+      final (Rect block2, Rect layer2) = await at(tester, 700);
+
+      final double blockMoved = block2.left - block1.left;
+      final double layerMoved = layer2.left - layer1.left;
+      expect(blockMoved, 200);
+      expect(layerMoved, greaterThan(0));
+      expect(layerMoved, lessThan(blockMoved));
+    });
+
+    testWidgets('zooms a block in a reversed list in as it crosses', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(tester, axis: Axis.vertical, reverse: true);
+
+      final (Rect _, Rect entering) = await at(tester, 200);
+      final (Rect _, Rect leaving) = await at(tester, 800);
+
+      expect(leaving.height, greaterThan(entering.height));
+    });
+  });
+
+  group('decoding at the size drawn', () {
+    test('keeps the larger ratio for a cover', () {
+      expect(
+        decodeSizeFor(
+          const Size(4000, 2000),
+          const Size(1000, 1000),
+          BoxFit.cover,
+        ),
+        const Size(2000, 1000),
+      );
+    });
+
+    test('keeps the smaller ratio for a contain', () {
+      expect(
+        decodeSizeFor(
+          const Size(4000, 2000),
+          const Size(1000, 1000),
+          BoxFit.contain,
+        ),
+        const Size(1000, 500),
+      );
+    });
+
+    test('never scales an image up', () {
+      expect(
+        decodeSizeFor(
+          const Size(800, 600),
+          const Size(2000, 2000),
+          BoxFit.cover,
+        ),
+        isNull,
+      );
+    });
+
+    test('rounds the box up, so a small resize reuses the decode', () {
+      final ImageProvider<Object> a = decodedFor(
+        _image,
+        layer: const Size(400, 300),
+        devicePixelRatio: 2,
+        fit: BoxFit.cover,
+      );
+      final ImageProvider<Object> b = decodedFor(
+        _image,
+        layer: const Size(401, 301),
+        devicePixelRatio: 2,
+        fit: BoxFit.cover,
+      );
+
+      expect(a, b);
+      expect((a as DisplaySizeImage).size, const Size(832, 640));
+    });
+
+    test('leaves room for the zoom', () {
+      final DisplaySizeImage image = decodedFor(
+        _image,
+        layer: const Size(640, 640),
+        devicePixelRatio: 1,
+        fit: BoxFit.cover,
+        zoom: 1.5,
+      ) as DisplaySizeImage;
+
+      expect(image.size, const Size(960, 960));
+    });
+
+    /// The provider the one [Image] under test draws.
+    ImageProvider<Object> drawn(WidgetTester tester) =>
+        tester.widget<Image>(find.byType(Image)).image;
+
+    testWidgets('decodes an item for its layer', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SimpleParallaxItem(image: _image, height: 200),
+            ],
+          ),
+        ),
+      );
+
+      // 800 by 200 at an overscan of 1.5, on a screen of 3, rounded up.
+      final DisplaySizeImage image = drawn(tester) as DisplaySizeImage;
+      expect(image.size, const Size(2432, 960));
+      expect(image.image, _image);
+    });
+
+    testWidgets('decodes a container for its layer', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: _image,
+            parallax: const ParallaxProperties(overscan: 2),
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      // 800 by 600 at an overscan of 2, on a screen of 3.
+      expect((drawn(tester) as DisplaySizeImage).size, const Size(2432, 3648));
+    });
+
+    testWidgets('hands the image over untouched when told to', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SimpleParallaxItem(
+                image: _image,
+                height: 200,
+                decodeAtDisplaySize: false,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(drawn(tester), _image);
+    });
+
+    testWidgets('decodes a large picture no larger than it is drawn', (
+      WidgetTester tester,
+    ) async {
+      final Uint8List? bytes = await tester.runAsync(() async {
+        final ui.PictureRecorder recorder = ui.PictureRecorder();
+        Canvas(recorder).drawRect(
+          const Rect.fromLTWH(0, 0, 4000, 2000),
+          Paint()..color = const Color(0xFF3060A0),
+        );
+        final ui.Image picture =
+            await recorder.endRecording().toImage(4000, 2000);
+        final ByteData? png =
+            await picture.toByteData(format: ui.ImageByteFormat.png);
+        return png!.buffer.asUint8List();
+      });
+      final MemoryImage large = MemoryImage(bytes!);
+
+      Future<int> decodedWidth({required bool atDisplaySize}) async {
+        await tester.pumpWidget(
+          _app(
+            ListView(
+              children: <Widget>[
+                SimpleParallaxItem(
+                  image: large,
+                  height: 200,
+                  decodeAtDisplaySize: atDisplaySize,
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 200)),
+        );
+        await tester.pump();
+        return tester.widget<RawImage>(find.byType(RawImage)).image!.width;
+      }
+
+      // The layer is 2432 by 960 physical pixels: a 2 to 1 picture covers it
+      // at 2432 by 1216.
+      expect(await decodedWidth(atDisplaySize: true), 2432);
+      imageCache.clear();
+      expect(await decodedWidth(atDisplaySize: false), 4000);
+    });
+  });
+
+  group('the item frame', () {
+    testWidgets('aligns its image as it is told', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SimpleParallaxItem(
+                image: _image,
+                height: 200,
+                alignment: Alignment.topCenter,
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(
+        tester.widget<Image>(find.byType(Image)).alignment,
+        Alignment.topCenter,
+      );
+    });
+
+    testWidgets('rounds its corners, content included', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: <Widget>[
+              SimpleParallaxItem(
+                background: _layer,
+                height: 200,
+                borderRadius: BorderRadius.circular(18),
+                child: const Text('Caption'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final Finder clip = find.byType(ClipRRect);
+      expect(
+        tester.widget<ClipRRect>(clip).borderRadius,
+        BorderRadius.circular(18),
+      );
+      expect(
+        find.descendant(of: clip, matching: find.text('Caption')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('stays square by default', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          ListView(
+            children: const <Widget>[
+              SimpleParallaxItem(background: _layer, height: 200),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.byType(ClipRRect), findsNothing);
+    });
+  });
+
+  group('the scroll view', () {
+    testWidgets('takes what a container hands it', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            background: _layer,
+            restorationId: 'page',
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            clipBehavior: Clip.none,
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+
+      final CustomScrollView view =
+          tester.widget<CustomScrollView>(find.byType(CustomScrollView));
+      expect(view.restorationId, 'page');
+      expect(
+        view.keyboardDismissBehavior,
+        ScrollViewKeyboardDismissBehavior.onDrag,
+      );
+      expect(view.clipBehavior, Clip.none);
+    });
+
+    testWidgets('takes what a widget hands it', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxWidget(
+            restorationId: 'list',
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            clipBehavior: Clip.none,
+            children: _tall(),
+          ),
+        ),
+      );
+
+      final CustomScrollView view =
+          tester.widget<CustomScrollView>(find.byType(CustomScrollView));
+      expect(view.restorationId, 'list');
+      expect(
+        view.keyboardDismissBehavior,
+        ScrollViewKeyboardDismissBehavior.onDrag,
+      );
+      expect(view.clipBehavior, Clip.none);
     });
   });
 }

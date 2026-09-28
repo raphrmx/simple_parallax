@@ -1,8 +1,7 @@
 # Simple Parallax
 
-Parallax widgets for Flutter, in pure Dart. Two modes, either axis, any `ImageProvider` or any
-widget as the background, and no dependencies beyond the Flutter SDK. The drift, the zoom, the blur
-and the overlay are each configured on their own.
+Parallax backgrounds for Flutter, in pure Dart with no dependencies. Put one background behind a
+whole page, or give each block of a list its own.
 
 <p>
   <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp?v=3" alt="Container mode, scrolling down" width="330">
@@ -19,9 +18,6 @@ and the overlay are each configured on their own.
   <img src="https://public.comapps.be/packages/simple_parallax/widget_background.webp?v=3" alt="A gradient as the background" width="330">
 </p>
 
-<sub>Container mode on the first row, item mode on the second; scrolling down on the left, sideways
-on the right. Last one: the background as a widget rather than an image.</sub>
-
 [![Live demo](https://img.shields.io/badge/Live_demo-comapps.web.app-3c9a70)](https://comapps.web.app/simple_parallax/)
 [![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=0175C2)](https://pub.dev/packages/simple_parallax)
 [![Build](https://img.shields.io/github/actions/workflow/status/raphrmx/simple_parallax/ci.yml?branch=main&label=build)](https://github.com/raphrmx/simple_parallax/actions/workflows/ci.yml)
@@ -37,9 +33,7 @@ flutter pub add simple_parallax
 
 Requires Flutter 3.22 or later.
 
-## Container mode
-
-One background drifting behind a scrolling area, over the whole page.
+## One background behind a page
 
 ```dart
 SimpleParallaxContainer(
@@ -48,31 +42,7 @@ SimpleParallaxContainer(
 );
 ```
 
-| Parameter | Default | Effect |
-| --- | --- | --- |
-| `image` | one of the two | Any `ImageProvider`: asset, network, file or memory. |
-| `background` | one of the two | The background as a widget, when the layer is not a plain image. |
-| `child` | required | The scrolling content, laid out as a single box sliver. |
-| `slivers` | required | The scrolling content as slivers, on the `.slivers` constructor. |
-| `scrollDirection` | `Axis.vertical` | The axis the content scrolls and the background drifts along. |
-| `parallax` | `ParallaxProperties()` | How the background drifts: its `speed` and its `overscan`. |
-| `zoom` | `null` | How it scales down the page. |
-| `blur` | `null` | How it is blurred down the page. |
-| `overlay` | `null` | A fixed tint over it, under the content. |
-| `height` | `null` | Forces the viewport height instead of using the constraints. |
-| `width` | `null` | Forces the viewport width instead of using the constraints. |
-| `fit` | `BoxFit.cover` | How the background fills its layer. Applies to `image` only. |
-| `alignment` | `Alignment.center` | How the background sits inside its layer. Applies to `image` only. |
-| `smooth` | `true` | Eases the mouse wheel in, and brings it to a horizontal view. |
-
-The `.slivers` constructor takes the slivers itself, so the content builds as it scrolls and a
-`SliverAppBar` can ride over the background.
-
-## Item mode
-
-Each block slides its own background as it crosses the viewport. The item finds the enclosing
-`Scrollable` by itself, so it works in a `ListView`, a `CustomScrollView`, or anything else that
-scrolls.
+## A background per block
 
 ```dart
 ListView(
@@ -86,145 +56,76 @@ ListView(
 );
 ```
 
-| Parameter | Default | Effect |
-| --- | --- | --- |
-| `image` | one of the two | Any `ImageProvider`. |
-| `background` | one of the two | The background as a widget, when the layer is not a plain image. |
-| `child` | `null` | Content drawn over the background. |
-| `parallax` | `ParallaxProperties()` | How the background drifts: its `speed` and its `overscan`. |
-| `zoom` | `null` | How it scales as the block crosses. |
-| `blur` | `null` | How it is blurred as the block crosses. |
-| `overlay` | `null` | A fixed tint over it, under `child`. |
-| `height` | screen height, or constraints when horizontal | Item height. |
-| `width` | constraints, or screen width when horizontal | Item width. |
-| `fit` | `BoxFit.cover` | How the background fills its layer. Applies to `image` only. |
+That is all it takes. Everything below is optional.
 
-`SimpleParallaxWidget` is a scroll view for a list of items, laying each one across the full cross
-axis the way a `ListView` does.
+## Effects
 
-## Beyond `image`
-
-`background` takes the layer itself instead of an `ImageProvider`, on both modes and on `.slivers`.
-It is handed the cross-axis extent and `overscan` times the scrolled extent, both tight, so anything
-that fills the box it is given works: a gradient, a `Stack`, a shader, a video. `fit` and
-`alignment` apply to `image` only, since a widget fills the layer as it stands.
-
-It is also how you reach the `Image` parameters the package does not forward. A background drawn at
-one and a half times the viewport is the largest bitmap on the page, so `cacheHeight` earns its
-keep:
-
-```dart
-SimpleParallaxItem(
-  height: 300,
-  background: Image(
-    image: const NetworkImage('https://example.com/cover.jpg'),
-    fit: BoxFit.cover,
-    cacheHeight: 900,
-    errorBuilder: (BuildContext context, Object error, StackTrace? stack) =>
-        const ColoredBox(color: Color(0xFF263238)),
-  ),
-);
-```
-
-A layer carrying an aspect ratio of its own, a video for one, has to be covered the way `BoxFit`
-covered it for you. `ContainerVideoDemo` in the example does that end to end.
-
-## The four effects
-
-Each one is its own object, so they are set, left out and shaped independently.
+Both widgets take the same four, each set on its own:
 
 ```dart
 SimpleParallaxItem(
   image: const AssetImage('assets/images/background.webp'),
   height: 620,
   parallax: const ParallaxProperties(speed: 0.4),
-  zoom: const ZoomProperties(0.6, reach: 0.5, back: true),
+  zoom: const ZoomProperties(0.6),
   blur: const BlurProperties(-16),
   overlay: const OverlayProperties.darken(0.45),
-  child: const Center(child: Text('Chapter one')),
 );
 ```
 
-| Object | What it drives |
+| Parameter | Effect |
 | --- | --- |
-| `ParallaxProperties(speed, overscan)` | The drift. `speed` is the fraction of the available travel it spends, `overscan` the image it has to spend. |
-| `ZoomProperties(amount, {reach, back})` | The scale. `0.25` ends a quarter larger. |
-| `BlurProperties(sigma, {reach, back})` | The blur, as a sigma in logical pixels. |
-| `OverlayProperties` | A fixed tint. `.darken`, `.lighten`, a colour, or `.gradient`. |
+| `parallax` | The drift. `speed` goes from `0` to `1`, `overscan` is how much larger than the view the background is drawn. |
+| `zoom` | Grows as it crosses: `0.25` ends a quarter larger. Negative runs it the other way. |
+| `blur` | Softens as it crosses, as a sigma in pixels. Negative sharpens instead. |
+| `overlay` | A fixed tint: `.darken`, `.lighten`, a colour or a `.gradient`. |
 
-A negative `amount` or `sigma` runs the range backwards, so the background settles or clears instead
-of pushing in or softening. `reach` packs the effect into the stretch before a point, `0.5` being
-the middle of the screen, and `back` runs it the other way over the rest. Between the sign and the
-pair, that is six shapes per effect. The drift is never shaped this way: it follows the scroll,
-because a background walking back up the page reads as the content scrolling the other way.
+`zoom` and `blur` also take `reach` and `back`, to finish part way, `0.5` being the middle of the
+screen, then hold there or turn back.
 
-The overlay is fixed. It does not drift, scale or blur with the background, which is what makes it
-read as a treatment of the page rather than as part of the image.
+## Good to know
 
-## How it performs
+- `background` takes a widget instead of an `image`: a gradient, a video, or an `Image` you set up
+  yourself, with `cacheHeight` or an `errorBuilder`.
+- The container scrolls sideways with `scrollDirection: Axis.horizontal`. Items read the axis of
+  the list they sit in.
+- `SimpleParallaxContainer.slivers` takes slivers, for a long list or a `SliverAppBar` over the
+  background.
+- `SimpleParallaxWidget`, and `SimpleParallaxWidget.builder` for long lists, is a ready-made scroll
+  view for items.
+- Items take `borderRadius` for a rounded card, and `alignment` to keep the top of a portrait in
+  the frame.
+- In nested scrollables, `scrollAxis` picks the one an item follows, for instance the page around
+  a carousel.
+- The mouse wheel is eased on desktop and the web. To drive the view from outside and keep that,
+  pass a `SmoothScrollController` as its `controller`.
+- The platform's reduced motion setting is followed: backgrounds hold still. Pass
+  `respectReducedMotion: false` to keep the effect regardless.
 
-Scrolling this package repaints the background and rebuilds nothing.
+Every parameter is documented in the
+[API reference](https://pub.dev/documentation/simple_parallax/latest/).
 
-**Container mode.** The moving layer sits behind a `RepaintBoundary` and the scroll drives a
-transform on it alone. Your content is built once and never touched again, however far the page
-runs.
+## Performance
 
-**Item mode.** The background is painted by a `Flow` bound straight to the scroll position, so it
-repaints without a single widget rebuild. No `setState`, no `AnimatedBuilder` over your subtree, no
-listener rebuilding a block because the page moved under it.
-
-**Both.** The two scroll views are `CustomScrollView`s, so content handed over as slivers is built
-only as far as the viewport reaches. A list of five hundred blocks costs what the ones on screen
-cost.
-
-The drift and the zoom are transforms: the background is drawn once and moved, which is nearly free.
-The blur is the one exception, and the one setting here that can cost a frame, since it runs a
-gaussian over `overscan` times the viewport on every frame the layer moves. Profile it on the oldest
-phone you support. Two things are done for you: the sigma is rounded to a quarter of a pixel so the
-filter is left alone between frames that would look the same, and a sigma of zero pushes no layer at
-all.
-
-## Moving from 1.x
-
-| Before | Now |
-| --- | --- |
-| `speed: 0.4, overscan: 2` | `parallax: ParallaxProperties(speed: 0.4, overscan: 2)` |
-| `autoSpeed: true` | nothing: `speed` defaults to `1`, which is the same thing |
-| `speed: 0.3` on a container | a fraction now, not a travel per pixel. Pick one between `0` and `1` |
-| `zoom: 0.25` | `zoom: ZoomProperties(0.25)` |
-| `blur: 16` | `blur: BlurProperties(16)` |
-| `zoom: 0.6, reach: 0.5, back: true` | `zoom: ZoomProperties(0.6, reach: 0.5, back: true)` |
-| a hand-rolled scrim in `child` | `overlay: OverlayProperties.darken(0.45)` |
-
-Nothing else moves, except `smooth`, which now defaults to `true`. Pass `smooth: false` for the
-platform wheel behaviour. Coming from 0.1.x, see the [CHANGELOG](CHANGELOG.md).
+Scrolling repaints the background and rebuilds no widget, and lists build as they scroll. Images
+are decoded at the size they are drawn, not at full resolution. The drift and the zoom cost next to
+nothing; the blur is the one effect worth profiling on an older phone.
 
 ## Example
 
-`example/` is one app with thirteen screens, and it is what the
-[live demo](https://comapps.web.app/simple_parallax/) runs: both modes, each vertical and sideways,
-the container over slivers, both directions of the zoom and of the blur, an effect finishing at the
-middle and one sent back from it, the three forms of the overlay, a widget background in each mode,
-and a looping video behind each.
+`example/` is the app behind the [live demo](https://comapps.web.app/simple_parallax/), one screen
+per feature.
 
 ```sh
 cd example && flutter run
 ```
 
-It also carries the one thing this page only mentions: `_DragScrollBehavior`, which lets a mouse
-drag a scroll view, since Flutter's `dragDevices` covers touch, stylus and trackpad and not the
-mouse. That is an app-wide decision, so it belongs to a `ScrollBehavior` of yours rather than to a
-widget here.
+It also shows how to let a mouse drag a list, which Flutter does not allow by default:
+`_DragScrollBehavior`.
 
-## Dependencies
+## Upgrading
 
-None beyond the Flutter SDK.
-
-## Tests
-
-```sh
-flutter test
-```
+Coming from 1.x or 0.1.x, see the [CHANGELOG](CHANGELOG.md).
 
 ## License
 

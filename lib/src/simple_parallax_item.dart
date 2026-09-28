@@ -1,8 +1,7 @@
-import 'dart:ui' as ui;
-
-import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import 'display_size_image.dart';
+import 'live_blur.dart';
 import 'overlay_layer.dart';
 import 'properties.dart';
 import 'travel.dart';
@@ -14,12 +13,14 @@ import 'travel.dart';
 /// [ListView], a [CustomScrollView], a `SimpleParallaxWidget` or any other
 /// scrollable. It also takes its axis from that scrollable, so the background
 /// slides sideways in a horizontal list and downwards in a vertical one with
-/// nothing to pass. Painting is driven straight off the scroll position, so
+/// nothing to pass. Inside a scrollable nested in another, [scrollAxis] picks
+/// which one to follow. Painting is driven straight off the scroll position, so
 /// scrolling repaints the background without rebuilding a single widget, [child]
 /// included.
 ///
 /// Outside a scrollable the background is simply drawn still, which is what you
-/// want for a preview or a test.
+/// want for a preview or a test. It is drawn still too when the platform asks
+/// for reduced motion, unless [respectReducedMotion] is turned off.
 ///
 /// The background is either an [image] or a [background] widget, never both. The
 /// widget form is what you want for a gradient, a video, a shader, a blurred or
@@ -45,6 +46,15 @@ import 'travel.dart';
 ///   scrollable, and to the screen width in a horizontal one.
 /// - [fit]: how the background fills its layer. Applies to [image] only: a
 ///   [background] widget is laid out to fill the layer as it stands.
+/// - [alignment]: how the background sits inside its layer. Applies to [image]
+///   only.
+/// - [borderRadius]: rounds the corners of the block, `null` for square ones.
+/// - [decodeAtDisplaySize]: whether [image] is decoded at the size it is drawn
+///   rather than at full resolution.
+/// - [scrollAxis]: the axis of the scrollable to follow, `null` for the
+///   nearest one.
+/// - [respectReducedMotion]: whether the background holds still when the
+///   platform asks for reduced motion.
 ///
 /// ### Example:
 /// ```dart
@@ -70,6 +80,16 @@ import 'travel.dart';
 ///       child: Center(child: Text('Chapter one')),
 ///     ),
 ///   ],
+/// );
+/// ```
+///
+/// A block in a horizontal carousel that follows the vertical page around it
+/// rather than the carousel:
+/// ```dart
+/// SimpleParallaxItem(
+///   image: NetworkImage('https://example.com/a.jpg'),
+///   width: 300,
+///   scrollAxis: Axis.vertical,
 /// );
 /// ```
 ///
@@ -101,6 +121,11 @@ class SimpleParallaxItem extends StatelessWidget {
     this.height,
     this.width,
     this.fit = BoxFit.cover,
+    this.alignment = Alignment.center,
+    this.borderRadius,
+    this.decodeAtDisplaySize = true,
+    this.scrollAxis,
+    this.respectReducedMotion = true,
     super.key,
   }) : assert(
           (image == null) != (background == null),
@@ -140,7 +165,8 @@ class SimpleParallaxItem extends StatelessWidget {
   final OverlayProperties? overlay;
 
   /// Item height, or `null` for the screen height in a vertical scrollable and
-  /// the incoming constraints in a horizontal one.
+  /// the incoming constraints in a horizontal one. The scrollable meant is the
+  /// nearest, the one laying the item out, whatever [scrollAxis] follows.
   final double? height;
 
   /// Item width, or `null` for the incoming constraints in a vertical
@@ -151,63 +177,150 @@ class SimpleParallaxItem extends StatelessWidget {
   /// widget fills the layer as it stands.
   final BoxFit fit;
 
+  /// How the background sits inside its layer, for instance
+  /// `Alignment.topCenter` to keep the top of a portrait in the frame. Applies
+  /// to [image] only.
+  final Alignment alignment;
+
+  /// Rounds the corners of the block, `null` for square ones.
+  ///
+  /// Everything is clipped to it, the background, the overlay and [child]
+  /// alike, which is what a card wants.
+  final BorderRadiusGeometry? borderRadius;
+
+  /// Whether [image] is decoded at the size it is drawn rather than at full
+  /// resolution.
+  ///
+  /// A photo of 4000 by 3000 pixels in a block of 300 is otherwise decoded, and
+  /// held in memory, at full size, which in a list of photos costs far more
+  /// than the parallax does. The size is worked out from the block, the
+  /// overscan, the zoom and the pixel density of the screen, so nothing is
+  /// lost. Turn it off when the same image is shown elsewhere at full size and
+  /// one decoded copy should serve both, and when the image is warmed up with
+  /// `precacheImage`: that decodes it at full size, a copy the block would not
+  /// use, so it would be decoded again when it first shows. A [background]
+  /// widget is never
+  /// touched: an [Image] there takes its own `cacheWidth` and `cacheHeight`.
+  final bool decodeAtDisplaySize;
+
+  /// The axis of the scrollable the background follows, or `null` for the
+  /// nearest scrollable, whichever way it runs.
+  ///
+  /// Only needed when scrollables are nested. A block in a horizontal carousel
+  /// inside a vertical page follows the carousel by default and slides
+  /// sideways; `Axis.vertical` has it follow the page instead, and slide
+  /// downwards as the page scrolls. With no scrollable on that axis above it,
+  /// the background is drawn still.
+  final Axis? scrollAxis;
+
+  /// Whether the background holds still when the platform asks for reduced
+  /// motion, through [MediaQueryData.disableAnimations].
+  ///
+  /// A background moving against the content is a known trigger for people
+  /// with vestibular disorders, which is why the setting exists and why it is
+  /// followed by default. The block is then drawn as it looks in the middle of
+  /// the viewport: background centred, [zoom] and [blur] at their mid-crossing
+  /// values, none of it changing with the scroll.
+  final bool respectReducedMotion;
+
   @override
   Widget build(BuildContext context) {
-    final ScrollableState? scrollable = Scrollable.maybeOf(context);
-    final Axis axis = scrollable?.position.axis ?? Axis.vertical;
-    final bool horizontal = axis == Axis.horizontal;
+    // The nearest scrollable lays the block out, so it settles the defaults;
+    // the one followed may be further up.
+    final ScrollableState? nearest = Scrollable.maybeOf(context);
+    final ScrollableState? followed = scrollAxis == null
+        ? nearest
+        : Scrollable.maybeOf(context, axis: scrollAxis);
+    final bool laidOutSideways = nearest?.position.axis == Axis.horizontal;
     final Size screen = MediaQuery.sizeOf(context);
+    final bool still =
+        respectReducedMotion && MediaQuery.disableAnimationsOf(context);
 
-    // The scrolled axis has to be known to size the overscan; the cross axis is
-    // happy to come from the constraints.
-    final double? height = this.height ?? (horizontal ? null : screen.height);
-    final double? width = this.width ?? (horizontal ? screen.width : null);
+    // The scrolled axis cannot come from the constraints, which are unbounded
+    // along it; the cross axis is happy to.
+    final double? height =
+        this.height ?? (laidOutSideways ? null : screen.height);
+    final double? width = this.width ?? (laidOutSideways ? screen.width : null);
 
-    final Widget layer = this.background ?? Image(image: image!, fit: fit);
+    final ZoomProperties? zoom = this.zoom;
+    final double devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
 
-    Widget background = SizedBox(
-      height: horizontal ? null : height! * parallax.overscan,
-      width: horizontal ? width! * parallax.overscan : null,
-      child: layer,
-    );
+    // The layer, sized along the axis followed.
+    Widget layerIn(Size block) {
+      ImageProvider<Object>? image = this.image;
+      if (image != null && decodeAtDisplaySize) {
+        final bool drift = followed != null;
+        final bool sideways = followed?.position.axis == Axis.horizontal;
+        image = decodedFor(
+          image,
+          layer: Size(
+            block.width * (drift && sideways ? parallax.overscan : 1),
+            block.height * (drift && !sideways ? parallax.overscan : 1),
+          ),
+          devicePixelRatio: devicePixelRatio,
+          fit: fit,
+          zoom: zoom == null ? 1 : 1 + zoom.amount.abs(),
+        );
+      }
 
-    final BlurProperties? blur = this.blur;
-    if (blur != null && scrollable != null) {
-      background = _ScrollBlur(
-        scrollable: scrollable,
-        itemContext: context,
-        axis: axis,
-        blur: blur,
-        child: background,
+      // Decoration, whatever it is made of: left to announce itself, an image
+      // would mark the block and everything in [child] as one. The boundary
+      // keeps it from being painted again on every scroll: only the transform
+      // over it changes.
+      return RepaintBoundary(
+        child: ExcludeSemantics(
+          child: background ??
+              Image(image: image!, fit: fit, alignment: alignment),
+        ),
       );
     }
 
+    // Laid out rather than built, so the decode size can follow the block.
+    final Widget painted = LayoutBuilder(
+      builder: (BuildContext _, BoxConstraints constraints) {
+        final Widget layer = layerIn(constraints.biggest);
+        if (followed == null) return layer;
+
+        final TravelProgress progress = TravelProgress();
+        final BlurProperties? blur = this.blur;
+        return Flow.unwrapped(
+          delegate: _ParallaxFlowDelegate(
+            scrollable: followed,
+            itemContext: context,
+            progress: progress,
+            parallax: parallax,
+            zoom: zoom,
+            still: still,
+          ),
+          children: <Widget>[
+            if (blur == null)
+              layer
+            else
+              LiveBlur(
+                sigma: () => sigmaOf(blur, progress.value),
+                child: layer,
+              ),
+          ],
+        );
+      },
+    );
+
+    final Widget block = Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        RepaintBoundary(child: ClipRect(child: painted)),
+        if (overlay != null) OverlayLayer(overlay!),
+        if (child != null) child!,
+      ],
+    );
+
+    final BorderRadiusGeometry? borderRadius = this.borderRadius;
     return SizedBox(
       height: height,
       width: width,
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          RepaintBoundary(
-            child: ClipRect(
-              child: scrollable == null
-                  ? background
-                  : Flow(
-                      delegate: _ParallaxFlowDelegate(
-                        scrollable: scrollable,
-                        itemContext: context,
-                        speed: parallax.speed,
-                        zoom: zoom,
-                        axis: axis,
-                      ),
-                      children: <Widget>[background],
-                    ),
-            ),
-          ),
-          if (overlay != null) OverlayLayer(overlay!),
-          if (child != null) child!,
-        ],
-      ),
+      child: borderRadius == null
+          ? block
+          : ClipRRect(borderRadius: borderRadius, child: block),
     );
   }
 }
@@ -219,6 +332,9 @@ class SimpleParallaxItem extends StatelessWidget {
 /// That is `viewport + extent` of scrolling. Measuring the middle of the block
 /// against the viewport alone would leave the effect standing still for half of
 /// it, once on the way in and once on the way out.
+///
+/// The ends are those of the scroll, not of the screen: a right-to-left list or
+/// a reversed one brings the block in from the left or from the top.
 ///
 /// `null` while there is no geometry to measure against.
 double? _progressOf(
@@ -247,221 +363,102 @@ double? _progressOf(
         : itemBox.size.centerLeft(Offset.zero),
     ancestor: scrollBox,
   );
-  final double travelled = horizontal ? itemOffset.dx : itemOffset.dy;
+  final double along = horizontal ? itemOffset.dx : itemOffset.dy;
+  final double travelled = axisDirectionIsReversed(scrollable.axisDirection)
+      ? viewport - along
+      : along;
   return ((viewport + extent / 2 - travelled) / span).clamp(0.0, 1.0);
 }
 
-/// Blurs its child by an amount that follows the block across the viewport.
-///
-/// A filter is a layer, so it cannot be handed to the [Flow] that places the
-/// background. This pushes its own from inside that flow, which repaints it on
-/// every scroll, and reads the geometry there rather than from a listener,
-/// where it would still be the geometry of the frame before.
-class _ScrollBlur extends SingleChildRenderObjectWidget {
-  const _ScrollBlur({
-    required this.scrollable,
-    required this.itemContext,
-    required this.axis,
-    required this.blur,
-    required Widget super.child,
-  });
-
-  final ScrollableState scrollable;
-  final BuildContext itemContext;
-  final Axis axis;
-  final BlurProperties blur;
-
-  @override
-  _RenderScrollBlur createRenderObject(BuildContext context) =>
-      _RenderScrollBlur(
-        scrollable: scrollable,
-        itemContext: itemContext,
-        axis: axis,
-        blur: blur,
-      );
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderScrollBlur renderObject,
-  ) {
-    renderObject
-      ..scrollable = scrollable
-      ..itemContext = itemContext
-      ..axis = axis
-      ..blur = blur;
-  }
-}
-
-class _RenderScrollBlur extends RenderProxyBox {
-  _RenderScrollBlur({
-    required ScrollableState scrollable,
-    required BuildContext itemContext,
-    required Axis axis,
-    required BlurProperties blur,
-  })  : _scrollable = scrollable,
-        _itemContext = itemContext,
-        _axis = axis,
-        _blur = blur;
-
-  ScrollableState _scrollable;
-
-  set scrollable(ScrollableState value) {
-    if (value == _scrollable) return;
-    if (attached) _scrollable.position.removeListener(markNeedsPaint);
-    _scrollable = value;
-    if (attached) _scrollable.position.addListener(markNeedsPaint);
-    markNeedsPaint();
-  }
-
-  BuildContext _itemContext;
-
-  set itemContext(BuildContext value) {
-    if (value == _itemContext) return;
-    _itemContext = value;
-    markNeedsPaint();
-  }
-
-  Axis _axis;
-
-  set axis(Axis value) {
-    if (value == _axis) return;
-    _axis = value;
-    markNeedsPaint();
-  }
-
-  BlurProperties _blur;
-
-  set blur(BlurProperties value) {
-    if (value == _blur) return;
-    _blur = value;
-    markNeedsPaint();
-  }
-
-  final LayerHandle<ImageFilterLayer> _filter = LayerHandle<ImageFilterLayer>();
-
-  @override
-  bool get alwaysNeedsCompositing => child != null;
-
-  /// [Flow] wraps each of its children in a [RepaintBoundary], so a scroll
-  /// moves the layer under it without painting it again. The sigma is read at
-  /// paint, so that paint has to be asked for.
-  @override
-  void attach(PipelineOwner owner) {
-    super.attach(owner);
-    _scrollable.position.addListener(markNeedsPaint);
-  }
-
-  @override
-  void detach() {
-    _scrollable.position.removeListener(markNeedsPaint);
-    super.detach();
-  }
-
-  @override
-  void dispose() {
-    _filter.layer = null;
-    super.dispose();
-  }
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    final double? progress = _progressOf(_scrollable, _itemContext, _axis);
-    final double sigma = sigmaOf(_blur, progress ?? 0);
-    if (sigma <= 0) {
-      _filter.layer = null;
-      super.paint(context, offset);
-      return;
-    }
-
-    final ImageFilterLayer filter = _filter.layer ??= ImageFilterLayer();
-    // Clamped rather than left to fade out, which would show the page down the
-    // sides of the layer.
-    filter.imageFilter = ui.ImageFilter.blur(
-      sigmaX: sigma,
-      sigmaY: sigma,
-      tileMode: TileMode.clamp,
-    );
-    context.pushLayer(filter, super.paint, offset);
-  }
-}
+/// The progress a block is drawn at when it holds still: the middle of its
+/// crossing, which is how it looks once it is in view.
+const double _still = 0.5;
 
 /// Places the background inside the item according to how far the item has
 /// travelled across the viewport.
 ///
 /// Repainting is bound to the scroll position rather than to a rebuild, so a
-/// scroll costs one paint and no widget work at all.
+/// scroll costs one paint and no widget work at all. The progress is measured
+/// once here and left in [progress] for a blur painted inside the flow.
 class _ParallaxFlowDelegate extends FlowDelegate {
   _ParallaxFlowDelegate({
     required this.scrollable,
     required this.itemContext,
-    required this.speed,
+    required this.progress,
+    required this.parallax,
     required this.zoom,
-    required this.axis,
-  }) : super(repaint: scrollable.position);
+    required this.still,
+  }) : super(repaint: still ? null : scrollable.position);
 
   final ScrollableState scrollable;
   final BuildContext itemContext;
-  final double speed;
+  final TravelProgress progress;
+  final ParallaxProperties parallax;
   final ZoomProperties? zoom;
-  final Axis axis;
 
-  bool get _horizontal => axis == Axis.horizontal;
+  /// Whether the block is drawn at [_still] whatever the scroll.
+  final bool still;
 
+  Axis get _axis => scrollable.position.axis;
+
+  bool get _horizontal => _axis == Axis.horizontal;
+
+  /// The layer is the block on the cross axis and the overscan times it along
+  /// the axis followed, both tight.
   @override
   BoxConstraints getConstraintsForChild(int i, BoxConstraints constraints) =>
       _horizontal
-          ? BoxConstraints.tightFor(height: constraints.maxHeight)
-          : BoxConstraints.tightFor(width: constraints.maxWidth);
+          ? BoxConstraints.tightFor(
+              width: constraints.maxWidth * parallax.overscan,
+              height: constraints.maxHeight,
+            )
+          : BoxConstraints.tightFor(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight * parallax.overscan,
+            );
 
   @override
   void paintChildren(FlowPaintingContext context) {
-    final RenderObject? itemBox = itemContext.findRenderObject();
     final Size? backgroundSize = context.getChildSize(0);
-    final double? progress = _progressOf(scrollable, itemContext, axis);
+    final double? at =
+        still ? _still : _progressOf(scrollable, itemContext, _axis);
+    progress.value = at ?? 0;
 
-    if (progress == null || itemBox is! RenderBox || backgroundSize == null) {
+    if (at == null || backgroundSize == null) {
       // Nothing to measure against yet; draw the background where it stands so
       // the first frame is not blank.
       context.paintChild(0);
       return;
     }
 
-    final double shift = (1 - 2 * progress) * speed;
+    // Towards the end the block comes in from, so the background lags behind
+    // it whichever way the scroll runs.
+    final double towards =
+        axisDirectionIsReversed(scrollable.axisDirection) ? -1 : 1;
+    final double shift = (1 - 2 * at) * parallax.speed * towards;
     final Alignment alignment =
         _horizontal ? Alignment(shift, 0) : Alignment(0, shift);
+    // The flow fills the block, so its size is the block's.
     final Rect childRect = alignment.inscribe(
       backgroundSize,
-      Offset.zero & itemBox.size,
+      Offset.zero & context.size,
     );
 
-    final Offset placement =
-        _horizontal ? Offset(childRect.left, 0) : Offset(0, childRect.top);
-    final Matrix4 transform = Matrix4.translationValues(
-      placement.dx,
-      placement.dy,
+    context.paintChild(
       0,
+      transform: placed(
+        _horizontal ? Offset(childRect.left, 0) : Offset(0, childRect.top),
+        scaleOf(zoom, at),
+        context.size.center(Offset.zero),
+      ),
     );
-
-    final double scale = scaleOf(zoom, progress);
-    if (scale != 1) {
-      // Turned about the middle of the block, which is where the eye is, and
-      // applied after the placement so the drift is not scaled with it.
-      final Offset about = itemBox.size.center(Offset.zero) - placement;
-      transform
-        ..translateByDouble(about.dx, about.dy, 0, 1)
-        ..scaleByDouble(scale, scale, 1, 1)
-        ..translateByDouble(-about.dx, -about.dy, 0, 1);
-    }
-
-    context.paintChild(0, transform: transform);
   }
 
   @override
   bool shouldRepaint(_ParallaxFlowDelegate oldDelegate) =>
       scrollable != oldDelegate.scrollable ||
       itemContext != oldDelegate.itemContext ||
-      speed != oldDelegate.speed ||
+      parallax != oldDelegate.parallax ||
       zoom != oldDelegate.zoom ||
-      axis != oldDelegate.axis;
+      still != oldDelegate.still;
 }

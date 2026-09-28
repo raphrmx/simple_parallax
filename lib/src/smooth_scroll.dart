@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
@@ -7,19 +8,50 @@ const Duration _wheelDuration = Duration(milliseconds: 220);
 /// Curve a wheel notch is animated on.
 const Curve _wheelCurve = Curves.easeOutCubic;
 
+/// Whether a view left to decide eases the mouse wheel on this platform.
+///
+/// On desktop and the web, where a mouse is expected. Not on iOS or Android,
+/// where there is none: the easing needs a controller of the view's own, and a
+/// view with a controller is not the primary one, which is what a tap on the
+/// iOS status bar scrolls back to the top.
+bool get easesWheelByDefault => switch (defaultTargetPlatform) {
+      TargetPlatform.iOS || TargetPlatform.android => false,
+      _ => true,
+    };
+
 /// A [ScrollController] whose position eases the mouse wheel in.
 ///
 /// A [Scrollable] applies a wheel notch with [ScrollPosition.jumpTo], which
 /// lands the whole notch on one frame. Anything driven off the scroll position,
 /// a parallax background included, then moves in steps.
 ///
+/// Hand one to `SimpleParallaxContainer` or `SimpleParallaxWidget` as their
+/// `controller` to drive the view from outside, to jump back to the top or to
+/// read the offset, and keep the wheel eased: a plain [ScrollController] turns
+/// `smooth` off, since the easing lives in the position this one creates. It is
+/// used like any other controller otherwise, and disposed by whoever created it.
+///
+/// Those views set [eased] themselves, off when the platform asks for reduced
+/// motion. In a scroll view of your own it eases the wheel along the view's
+/// axis, and leaves [eased] to you.
+///
 /// ---
 ///
 /// ### Example:
 /// ```dart
-/// CustomScrollView(
-///   controller: SmoothScrollController(),
-///   slivers: slivers,
+/// final SmoothScrollController controller = SmoothScrollController();
+///
+/// SimpleParallaxContainer(
+///   image: const AssetImage('assets/images/background.webp'),
+///   controller: controller,
+///   child: Column(children: items),
+/// );
+///
+/// // Later, from a button:
+/// controller.animateTo(
+///   0,
+///   duration: const Duration(milliseconds: 600),
+///   curve: Curves.easeInOutCubic,
 /// );
 /// ```
 class SmoothScrollController extends ScrollController {
@@ -29,6 +61,10 @@ class SmoothScrollController extends ScrollController {
     super.keepScrollOffset,
     super.debugLabel,
   });
+
+  /// Whether a wheel notch is animated rather than landed in one step. Read on
+  /// every notch, so it can change while the view is up.
+  bool eased = true;
 
   @override
   ScrollPosition createScrollPosition(
@@ -43,6 +79,7 @@ class SmoothScrollController extends ScrollController {
       initialPixels: initialScrollOffset,
       keepScrollOffset: keepScrollOffset,
       debugLabel: debugLabel,
+      eased: () => eased,
     );
   }
 }
@@ -60,7 +97,13 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
     super.initialPixels,
     super.keepScrollOffset,
     super.debugLabel,
-  });
+    bool Function()? eased,
+  }) : _eased = eased ?? _always;
+
+  static bool _always() => true;
+
+  /// Whether a notch is animated, asked on every one.
+  final bool Function() _eased;
 
   /// Where the notch being animated is headed, or `null` when none is running.
   double? _target;
@@ -80,6 +123,11 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
   /// one was headed, so turning the wheel quickly adds the notches up instead of
   /// restarting each time from where the view happens to be.
   void wheelBy(double delta) {
+    if (!_eased()) {
+      _target = null;
+      super.pointerScroll(delta);
+      return;
+    }
     final double from = _target ?? pixels;
     final double to =
         (from + delta).clamp(minScrollExtent, maxScrollExtent).toDouble();
@@ -130,11 +178,21 @@ class SmoothScroll extends StatefulWidget {
   const SmoothScroll({
     required this.axis,
     required this.builder,
+    this.controller,
+    this.eased = true,
     super.key,
   });
 
   /// The axis the built view scrolls along.
   final Axis axis;
+
+  /// The caller's controller, or `null` for one of this widget's own. The
+  /// caller's is never disposed here.
+  final SmoothScrollController? controller;
+
+  /// Whether a wheel notch is animated. Off, it lands in one step, while the
+  /// wheel is still brought to the axis of a horizontal view.
+  final bool eased;
 
   /// Builds the scroll view, which has to take the controller it is given.
   final Widget Function(BuildContext context, ScrollController controller)
@@ -145,11 +203,29 @@ class SmoothScroll extends StatefulWidget {
 }
 
 class _SmoothScrollState extends State<SmoothScroll> {
-  final SmoothScrollController _controller = SmoothScrollController();
+  /// The controller this widget made, when it was not handed one. Kept until
+  /// the widget goes, even if a controller is handed in meanwhile: the view may
+  /// still be attached to it until it rebuilds.
+  SmoothScrollController? _own;
+
+  SmoothScrollController get _controller =>
+      widget.controller ?? (_own ??= SmoothScrollController());
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.eased = widget.eased;
+  }
+
+  @override
+  void didUpdateWidget(SmoothScroll oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _controller.eased = widget.eased;
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _own?.dispose();
     super.dispose();
   }
 
