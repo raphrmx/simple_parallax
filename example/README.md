@@ -10,7 +10,7 @@ One app, eleven screens, reachable from a menu grouped by container mode, item m
 | `ContainerCustomDemo` | A gradient as the background |
 | `ItemVerticalDemo` | Item mode, two blocks at two speeds |
 | `ItemCarouselDemo` | Blocks in a sideways row, following the row, the page with `scrollAxis`, then both with `crossParallax` |
-| `ItemBuilderDemo` | Five hundred blocks from `SimpleParallaxWidget.builder` |
+| `ItemBuilderDemo` | Five hundred blocks from `SimpleParallaxWidget.builder`, fading in over a placeholder |
 | `ItemCustomDemo` | A gradient, a tinted image and a looping video as backgrounds |
 | `ItemZoomBlurDemo` | Both directions of the zoom, then of the blur |
 | `ItemReachDemo` | An effect done by the middle, held or sent back |

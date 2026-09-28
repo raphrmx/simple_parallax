@@ -909,6 +909,9 @@ class _Carousel extends StatelessWidget {
 ///
 /// `SimpleParallaxWidget.builder` takes an `itemBuilder` instead of a list, so
 /// only the blocks near the screen exist at any time, however long the list.
+/// Each block shows `placeholderColor` until its image is decoded, and fades
+/// the image in over it with `fadeIn`: the first time a block needs the image,
+/// before the cache holds it at that size.
 class ItemBuilderDemo extends StatelessWidget {
   /// Creates the builder demo.
   const ItemBuilderDemo({super.key});
@@ -934,6 +937,8 @@ class ItemBuilderDemo extends StatelessWidget {
               speed: index % 4 == 0 ? 1 : 0.5,
               overscan: 1.8,
             ),
+            placeholderColor: _dusk,
+            fadeIn: const Duration(milliseconds: 400),
             child: _Caption('No. ${index + 1} OF 500', note.title),
           );
         },

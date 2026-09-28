@@ -16,6 +16,8 @@ whole page, or give each block of a list its own.
 
 <p>
   <img src="https://public.comapps.be/packages/simple_parallax/widget_background.webp?v=3" alt="A gradient as the background" width="330">
+  &nbsp;
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_carousel.webp?v=1" alt="A carousel in a page, each card drifting with the row and with the page" width="330">
 </p>
 
 [![Live demo](https://img.shields.io/badge/Live_demo-comapps.web.app-3c9a70)](https://comapps.web.app/simple_parallax/)
@@ -95,6 +97,8 @@ screen, then hold there or turn back.
   view for items.
 - Items take `borderRadius` for a rounded card, and `alignment` to keep the top of a portrait in
   the frame.
+- For an image that loads over the network, `placeholderColor` fills the block meanwhile, `fadeIn`
+  brings the picture in, and `errorBuilder` takes its place if it fails.
 - In nested scrollables, `scrollAxis` picks the one an item follows, for instance the page around
   a carousel, and `crossParallax` has it follow the other one as well.
 - The mouse wheel is eased on desktop and the web. To drive the view from outside and keep that,

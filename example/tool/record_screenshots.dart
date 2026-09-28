@@ -85,6 +85,28 @@ Future<void> _loadFont() async {
   throw StateError('no font found among $_fontCandidates');
 }
 
+/// Decodes every picture on screen with the provider its [Image] draws, then
+/// settles.
+///
+/// Precaching the asset is not enough: the widgets decode it at the size they
+/// draw it, which is a key of its own in the image cache, so a precached asset
+/// would leave the backgrounds blank.
+Future<void> _decodeOnScreen(WidgetTester tester) async {
+  final List<Element> images = find.byType(Image).evaluate().toList();
+  await tester.runAsync(() async {
+    for (final Element element in images) {
+      await precacheImage((element.widget as Image).image, element);
+    }
+  });
+  await tester.pumpAndSettle();
+}
+
+/// Whether a picture on screen is still waiting for its decode.
+bool _undecoded(WidgetTester tester) => find
+    .byType(RawImage)
+    .evaluate()
+    .any((Element element) => (element.widget as RawImage).image == null);
+
 void main() {
   testWidgets(
     'render the screenshots',
@@ -115,13 +137,7 @@ void main() {
           ),
         );
 
-        await tester.runAsync(() async {
-          await precacheImage(
-            const AssetImage('assets/images/background.webp'),
-            tester.element(find.byKey(_shot)),
-          );
-        });
-        await tester.pumpAndSettle();
+        await _decodeOnScreen(tester);
 
         final ScrollableState scrollable = tester.state(
           find.byType(Scrollable).first,
@@ -129,6 +145,7 @@ void main() {
         final double max = scrollable.position.maxScrollExtent;
         scrollable.position.jumpTo((max * shot.at).clamp(0.0, max));
         await tester.pumpAndSettle();
+        if (_undecoded(tester)) await _decodeOnScreen(tester);
 
         final RenderRepaintBoundary boundary =
             tester.renderObject(find.byKey(_shot)) as RenderRepaintBoundary;

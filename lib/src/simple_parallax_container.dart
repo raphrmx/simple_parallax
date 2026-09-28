@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'display_size_image.dart';
+import 'image_layer.dart';
 import 'live_blur.dart';
 import 'overlay_layer.dart';
 import 'properties.dart';
@@ -54,6 +55,8 @@ import 'travel.dart';
 ///   stands.
 /// - [decodeAtDisplaySize]: whether [image] is decoded at the size it is
 ///   drawn rather than at full resolution.
+/// - [placeholderColor], [fadeIn] and [errorBuilder]: what shows while [image]
+///   loads, how it comes in, and what takes its place if it fails.
 /// - [restorationId], [keyboardDismissBehavior] and [clipBehavior]: handed to
 ///   the scroll view.
 /// - [controller]: an optional [ScrollController] for the scroll view. A
@@ -129,6 +132,9 @@ class SimpleParallaxContainer extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.alignment = Alignment.center,
     this.decodeAtDisplaySize = true,
+    this.placeholderColor,
+    this.fadeIn = Duration.zero,
+    this.errorBuilder,
     this.controller,
     this.physics,
     bool? smooth,
@@ -154,6 +160,14 @@ class SimpleParallaxContainer extends StatefulWidget {
 
   /// Creates a parallax container over [slivers], which build lazily, given
   /// either an [image] or a [background].
+  ///
+  /// The background follows the scroll offset against the whole extent of the
+  /// content, and a list that builds lazily only estimates that extent from the
+  /// items it has laid out so far. With items of one height the estimate is
+  /// right, and with a fixed extent it is exact: `SliverFixedExtentList`,
+  /// `SliverPrototypeExtentList`, or an `itemExtent`. With heights that vary a
+  /// lot, the background can settle by a few pixels as the estimate is
+  /// corrected while the list scrolls.
   const SimpleParallaxContainer.slivers({
     required List<Widget> this.slivers,
     this.image,
@@ -168,6 +182,9 @@ class SimpleParallaxContainer extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.alignment = Alignment.center,
     this.decodeAtDisplaySize = true,
+    this.placeholderColor,
+    this.fadeIn = Duration.zero,
+    this.errorBuilder,
     this.controller,
     this.physics,
     bool? smooth,
@@ -286,6 +303,28 @@ class SimpleParallaxContainer extends StatefulWidget {
   /// `cacheHeight`.
   final bool decodeAtDisplaySize;
 
+  /// What fills the background while [image] loads, `null` for nothing.
+  ///
+  /// It gives way to the picture once it is decoded, faded in over it when
+  /// [fadeIn] is set. An image the cache already holds is drawn at once.
+  /// Applies to [image] only.
+  final Color? placeholderColor;
+
+  /// How long [image] takes to come in once it is decoded, [Duration.zero] to
+  /// draw it at once.
+  ///
+  /// Left out when the background holds still for reduced motion, and for an
+  /// image the cache already holds, which is there from the first frame.
+  /// Applies to [image] only.
+  final Duration fadeIn;
+
+  /// What is drawn in place of an [image] that could not be loaded, a broken
+  /// URL for instance. It sits where the picture would have, and drifts with
+  /// the background. Left `null`, Flutter's own handling applies: an error box
+  /// in a debug build, and the [placeholderColor] in a release one. Applies to
+  /// [image] only.
+  final ImageErrorWidgetBuilder? errorBuilder;
+
   /// Restoration id handed to the scroll view, so the scroll offset survives
   /// the app being killed and restored.
   final String? restorationId;
@@ -340,7 +379,7 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
   /// transform over it changes.
   ///
   /// [size] is the layer in logical pixels, which the image is decoded for.
-  Widget _layer(Size size, double devicePixelRatio) {
+  Widget _layer(Size size, double devicePixelRatio, {required bool still}) {
     ImageProvider<Object>? image = widget.image;
     final ZoomProperties? zoom = widget.zoom;
     if (image != null && widget.decodeAtDisplaySize) {
@@ -355,7 +394,14 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
     return RepaintBoundary(
       child: ExcludeSemantics(
         child: widget.background ??
-            Image(image: image!, fit: widget.fit, alignment: widget.alignment),
+            ImageLayer(
+              image: image!,
+              fit: widget.fit,
+              alignment: widget.alignment,
+              placeholderColor: widget.placeholderColor,
+              fadeIn: still ? Duration.zero : widget.fadeIn,
+              errorBuilder: widget.errorBuilder,
+            ),
       ),
     );
   }
@@ -441,6 +487,7 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
               ? Size(viewportWidth * widget.parallax.overscan, viewportHeight)
               : Size(viewportWidth, viewportHeight * widget.parallax.overscan),
           devicePixelRatio,
+          still: still,
         );
         final Widget layer = blur == null
             ? background
@@ -577,6 +624,14 @@ class _DriftDelegate extends FlowDelegate {
       ),
     );
   }
+
+  /// The layer is sized from the axis and the overscan, so a change of either
+  /// has to lay it out again. Left to its default, a [Flow] never does, and the
+  /// layer keeps the size of the first delegate.
+  @override
+  bool shouldRelayout(_DriftDelegate oldDelegate) =>
+      axis != oldDelegate.axis ||
+      parallax.overscan != oldDelegate.parallax.overscan;
 
   @override
   bool shouldRepaint(_DriftDelegate oldDelegate) =>

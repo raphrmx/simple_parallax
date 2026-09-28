@@ -2889,4 +2889,238 @@ void main() {
       expect(image.size, const Size(1856, 1408));
     });
   });
+
+  group('an image on its way', () {
+    const Color placeholder = Color(0xFFB00020);
+
+    /// A picture the cache has never seen, so it loads rather than being drawn
+    /// at once.
+    ImageProvider fresh() => MemoryImage(Uint8List.fromList(_pixel));
+
+    final Finder placeholderBox = find.byWidgetPredicate(
+      (Widget widget) => widget is ColoredBox && widget.color == placeholder,
+    );
+
+    Future<void> pumpBlock(
+      WidgetTester tester,
+      ImageProvider image, {
+      Duration fadeIn = Duration.zero,
+      ImageErrorWidgetBuilder? errorBuilder,
+      bool reduced = false,
+      Key? key,
+    }) {
+      final Widget list = ListView(
+        children: <Widget>[
+          SimpleParallaxItem(
+            key: key,
+            image: image,
+            height: 300,
+            placeholderColor: placeholder,
+            fadeIn: fadeIn,
+            errorBuilder: errorBuilder,
+          ),
+        ],
+      );
+      return tester.pumpWidget(_app(reduced ? _reducedMotion(list) : list));
+    }
+
+    /// Lets the decode that started finish.
+    Future<void> decode(WidgetTester tester) async {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('shows the placeholder until the picture is ready', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(tester, fresh());
+      expect(placeholderBox, findsOneWidget);
+
+      await decode(tester);
+      expect(placeholderBox, findsNothing);
+    });
+
+    testWidgets('fades the picture in over the placeholder', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(
+        tester,
+        fresh(),
+        fadeIn: const Duration(milliseconds: 300),
+      );
+      expect(
+        tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
+        0,
+      );
+
+      await decode(tester);
+      expect(
+        tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
+        1,
+      );
+      expect(placeholderBox, findsOneWidget);
+
+      // Once in, nothing is left of the fade or of the placeholder.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+      expect(find.byType(AnimatedOpacity), findsNothing);
+      expect(placeholderBox, findsNothing);
+    });
+
+    testWidgets('skips the fade under reduced motion', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(
+        tester,
+        fresh(),
+        fadeIn: const Duration(milliseconds: 300),
+        reduced: true,
+      );
+      expect(find.byType(AnimatedOpacity), findsNothing);
+      expect(placeholderBox, findsOneWidget);
+
+      await decode(tester);
+      expect(placeholderBox, findsNothing);
+    });
+
+    testWidgets('draws a picture the cache holds at once', (
+      WidgetTester tester,
+    ) async {
+      final ImageProvider image = fresh();
+      await pumpBlock(tester, image, key: const ValueKey<int>(1));
+      await decode(tester);
+
+      await pumpBlock(
+        tester,
+        image,
+        fadeIn: const Duration(milliseconds: 300),
+        key: const ValueKey<int>(2),
+      );
+      expect(placeholderBox, findsNothing);
+      expect(find.byType(AnimatedOpacity), findsNothing);
+    });
+
+    testWidgets('puts what errorBuilder gives in place of a broken picture', (
+      WidgetTester tester,
+    ) async {
+      await pumpBlock(
+        tester,
+        MemoryImage(Uint8List.fromList(<int>[0, 1, 2, 3])),
+        errorBuilder: (BuildContext context, Object error, StackTrace? stack) =>
+            const Text('Broken'),
+      );
+
+      await decode(tester);
+      expect(find.text('Broken'), findsOneWidget);
+    });
+
+    testWidgets('does the same for a container', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        _app(
+          SimpleParallaxContainer(
+            image: fresh(),
+            placeholderColor: placeholder,
+            child: Column(children: _tall()),
+          ),
+        ),
+      );
+      expect(placeholderBox, findsOneWidget);
+
+      await decode(tester);
+      expect(placeholderBox, findsNothing);
+    });
+  });
+
+  group('a layer resized in place', () {
+    testWidgets('follows a container to a new overscan', (
+      WidgetTester tester,
+    ) async {
+      Widget page(double overscan) => _app(
+            SimpleParallaxContainer(
+              background: _layer,
+              parallax: ParallaxProperties(overscan: overscan),
+              child: Column(children: _tall()),
+            ),
+          );
+
+      await tester.pumpWidget(page(1.5));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(800, 900));
+
+      await tester.pumpWidget(page(2));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(800, 1200));
+    });
+
+    testWidgets('follows a container turned sideways', (
+      WidgetTester tester,
+    ) async {
+      Widget page(Axis axis) => _app(
+            SimpleParallaxContainer(
+              background: _layer,
+              scrollDirection: axis,
+              parallax: const ParallaxProperties(overscan: 1.5),
+              child: Flex(direction: axis, children: _tall()),
+            ),
+          );
+
+      await tester.pumpWidget(page(Axis.vertical));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(800, 900));
+
+      await tester.pumpWidget(page(Axis.horizontal));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(1200, 600));
+    });
+
+    testWidgets('follows an item to a new overscan', (
+      WidgetTester tester,
+    ) async {
+      Widget page(double overscan) => _app(
+            ListView(
+              children: <Widget>[
+                SimpleParallaxItem(
+                  background: _layer,
+                  height: 200,
+                  parallax: ParallaxProperties(overscan: overscan),
+                ),
+              ],
+            ),
+          );
+
+      await tester.pumpWidget(page(1.5));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(800, 300));
+
+      await tester.pumpWidget(page(2));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(800, 400));
+    });
+
+    testWidgets('follows an item given a drift across', (
+      WidgetTester tester,
+    ) async {
+      Widget page(ParallaxProperties? cross) => _app(
+            ListView(
+              children: <Widget>[
+                SizedBox(
+                  height: 300,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: <Widget>[
+                      SimpleParallaxItem(
+                        background: _layer,
+                        width: 400,
+                        crossParallax: cross,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+
+      await tester.pumpWidget(page(null));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(600, 300));
+
+      await tester.pumpWidget(page(const ParallaxProperties()));
+      expect(tester.getSize(find.byKey(_layerKey)), const Size(600, 450));
+    });
+  });
 }

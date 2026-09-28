@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'display_size_image.dart';
+import 'image_layer.dart';
 import 'live_blur.dart';
 import 'overlay_layer.dart';
 import 'properties.dart';
@@ -54,6 +55,8 @@ import 'travel.dart';
 /// - [borderRadius]: rounds the corners of the block, `null` for square ones.
 /// - [decodeAtDisplaySize]: whether [image] is decoded at the size it is drawn
 ///   rather than at full resolution.
+/// - [placeholderColor], [fadeIn] and [errorBuilder]: what shows while [image]
+///   loads, how it comes in, and what takes its place if it fails.
 /// - [scrollAxis]: the axis of the scrollable to follow, `null` for the
 ///   nearest one.
 /// - [respectReducedMotion]: whether the background holds still when the
@@ -138,6 +141,9 @@ class SimpleParallaxItem extends StatelessWidget {
     this.alignment = Alignment.center,
     this.borderRadius,
     this.decodeAtDisplaySize = true,
+    this.placeholderColor,
+    this.fadeIn = Duration.zero,
+    this.errorBuilder,
     this.scrollAxis,
     this.respectReducedMotion = true,
     super.key,
@@ -229,6 +235,28 @@ class SimpleParallaxItem extends StatelessWidget {
   /// `cacheHeight`.
   final bool decodeAtDisplaySize;
 
+  /// What fills the background while [image] loads, `null` for nothing.
+  ///
+  /// It gives way to the picture once it is decoded, faded in over it when
+  /// [fadeIn] is set. An image the cache already holds is drawn at once.
+  /// Applies to [image] only.
+  final Color? placeholderColor;
+
+  /// How long [image] takes to come in once it is decoded, [Duration.zero] to
+  /// draw it at once.
+  ///
+  /// Left out when the background holds still for reduced motion, and for an
+  /// image the cache already holds, which is there from the first frame.
+  /// Applies to [image] only.
+  final Duration fadeIn;
+
+  /// What is drawn in place of an [image] that could not be loaded, a broken
+  /// URL for instance. It sits where the picture would have, and drifts with
+  /// the background. Left `null`, Flutter's own handling applies: an error box
+  /// in a debug build, and the [placeholderColor] in a release one. Applies to
+  /// [image] only.
+  final ImageErrorWidgetBuilder? errorBuilder;
+
   /// The axis of the scrollable the background follows, or `null` for the
   /// nearest scrollable, whichever way it runs.
   ///
@@ -305,7 +333,14 @@ class SimpleParallaxItem extends StatelessWidget {
       return RepaintBoundary(
         child: ExcludeSemantics(
           child: background ??
-              Image(image: image!, fit: fit, alignment: alignment),
+              ImageLayer(
+                image: image!,
+                fit: fit,
+                alignment: alignment,
+                placeholderColor: placeholderColor,
+                fadeIn: still ? Duration.zero : fadeIn,
+                errorBuilder: errorBuilder,
+              ),
         ),
       );
     }
@@ -433,7 +468,9 @@ class _ParallaxFlowDelegate extends FlowDelegate {
     required this.crossParallax,
     required this.zoom,
     required this.still,
-  }) : super(
+  })  : _axis = scrollable.position.axis,
+        _crossAxis = crossed?.position.axis,
+        super(
           repaint: still
               ? null
               : crossed == null
@@ -459,7 +496,10 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   /// Whether the block is drawn at [_still] whatever the scroll.
   final bool still;
 
-  Axis get _axis => scrollable.position.axis;
+  /// The axis of [scrollable] and of [crossed], as they stood when this
+  /// delegate was made.
+  final Axis _axis;
+  final Axis? _crossAxis;
 
   /// How much larger than the block the layer is along [axis].
   double _overscanAlong(Axis axis) {
@@ -530,6 +570,16 @@ class _ParallaxFlowDelegate extends FlowDelegate {
       ),
     );
   }
+
+  /// The layer is sized from the axes followed and their overscan, so a change
+  /// of any of them has to lay it out again. Left to its default, a [Flow]
+  /// never does, and the layer keeps the size of the first delegate.
+  @override
+  bool shouldRelayout(_ParallaxFlowDelegate oldDelegate) =>
+      _axis != oldDelegate._axis ||
+      _crossAxis != oldDelegate._crossAxis ||
+      parallax.overscan != oldDelegate.parallax.overscan ||
+      crossParallax?.overscan != oldDelegate.crossParallax?.overscan;
 
   @override
   bool shouldRepaint(_ParallaxFlowDelegate oldDelegate) =>

@@ -263,11 +263,42 @@ const Widget _gradient = DecoratedBox(
 
 /// One preview: a name, the widget to render, and how far it scrolls.
 class _Preview {
-  const _Preview(this.name, this.build);
+  const _Preview(this.name, this.build, {this.drive, this.frames = _frames});
 
   final String name;
   final Widget Function(ScrollController controller) build;
+
+  /// Moves the scrollables on screen, outermost first, to where they stand at
+  /// `t`, from `0` to `1` over the loop. `null` takes the first one there and
+  /// back on a cosine.
+  final void Function(List<ScrollPosition> positions, double t)? drive;
+
+  /// Frames in this loop.
+  final int frames;
 }
+
+/// Where a scroll [position] stands [eased] of the way, from `0` at rest to
+/// `1` at its end.
+///
+/// Read afresh: jumpTo does not clamp, and a frame captured past the end shows
+/// the viewport background instead of the content.
+void _scrollTo(ScrollPosition position, double eased) {
+  final double max = position.maxScrollExtent;
+  position.jumpTo((max * eased).clamp(0.0, max));
+}
+
+/// There and back on a cosine, starting [phase] of the way round, so the loop
+/// closes with no jolt at either end.
+double _thereAndBack(double t, [double phase = 0]) =>
+    (1 - math.cos(2 * math.pi * (t + phase))) / 2;
+
+/// The days on the cards of the carousel preview.
+const List<(String, String)> _days = <(String, String)>[
+  ('DAY ONE', 'The pass'),
+  ('DAY TWO', 'The lake'),
+  ('DAY THREE', 'The ridge'),
+  ('DAY FOUR', 'The village'),
+];
 
 final List<_Preview> _previews = <_Preview>[
   _Preview(
@@ -387,6 +418,54 @@ final List<_Preview> _previews = <_Preview>[
       ),
     ),
   ),
+  _Preview(
+    'item_mode_carousel',
+    (ScrollController c) => ColoredBox(
+      color: _panel,
+      child: SimpleParallaxWidget(
+        controller: c,
+        children: <Widget>[
+          _prose(
+            'Both at once',
+            'Each card slides sideways with the row, and downwards with the '
+                'page.',
+            height: 96,
+          ),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 84),
+              itemCount: _days.length,
+              separatorBuilder: (BuildContext context, int index) =>
+                  const SizedBox(width: 12),
+              itemBuilder: (BuildContext context, int index) =>
+                  SimpleParallaxItem(
+                image: _photo,
+                width: 210,
+                borderRadius: BorderRadius.circular(14),
+                parallax: const ParallaxProperties(overscan: 1.8),
+                crossParallax: const ParallaxProperties(overscan: 1.8),
+                child: _caption(_days[index].$1, _days[index].$2),
+              ),
+            ),
+          ),
+          _prose(
+            'Two scrollables, one card',
+            'crossParallax adds the axis of the page to the axis of the row.',
+            height: 120,
+          ),
+        ],
+      ),
+    ),
+    // The page and the row a quarter of a loop apart, so the cards are seen
+    // moving each way on its own and both at once.
+    drive: (List<ScrollPosition> positions, double t) {
+      _scrollTo(positions[0], _thereAndBack(t));
+      _scrollTo(positions[1], _thereAndBack(t, 0.25));
+    },
+    frames: 100,
+  ),
 ];
 
 Future<void> _loadFont() async {
@@ -406,6 +485,28 @@ Future<void> _loadFont() async {
   }
   throw StateError('no font found among $_fontCandidates');
 }
+
+/// Decodes every picture on screen with the provider its [Image] draws, then
+/// settles.
+///
+/// Precaching the asset is not enough: the widgets decode it at the size they
+/// draw it, which is a key of its own in the image cache, so a precached asset
+/// would leave the backgrounds blank.
+Future<void> _decodeOnScreen(WidgetTester tester) async {
+  final List<Element> images = find.byType(Image).evaluate().toList();
+  await tester.runAsync(() async {
+    for (final Element element in images) {
+      await precacheImage((element.widget as Image).image, element);
+    }
+  });
+  await tester.pumpAndSettle();
+}
+
+/// Whether a picture on screen is still waiting for its decode.
+bool _undecoded(WidgetTester tester) => find
+    .byType(RawImage)
+    .evaluate()
+    .any((Element element) => (element.widget as RawImage).image == null);
 
 void main() {
   testWidgets(
@@ -428,10 +529,7 @@ void main() {
           ),
         );
 
-        await tester.runAsync(() async {
-          await precacheImage(_photo, tester.element(find.byKey(_shot)));
-        });
-        await tester.pumpAndSettle();
+        await _decodeOnScreen(tester);
 
         final ScrollableState scrollable =
             tester.state(find.byType(Scrollable).first);
@@ -443,16 +541,25 @@ void main() {
           old.deleteSync();
         }
 
-        for (int frame = 0; frame < _frames; frame++) {
-          // There and back on a cosine, so the loop closes with no jolt at
-          // either end.
-          final double t = frame / _frames;
-          final double eased = (1 - math.cos(2 * math.pi * t)) / 2;
-          // Read afresh: jumpTo does not clamp, and a frame captured past the
-          // end shows the viewport background instead of the content.
-          final double max = scrollable.position.maxScrollExtent;
-          scrollable.position.jumpTo((max * eased).clamp(0.0, max));
+        for (int frame = 0; frame < preview.frames; frame++) {
+          final double t = frame / preview.frames;
+          final List<ScrollPosition> positions = find
+              .byType(Scrollable)
+              .evaluate()
+              .map((Element e) => (e as StatefulElement).state)
+              .cast<ScrollableState>()
+              .map((ScrollableState s) => s.position)
+              .toList();
+          final void Function(List<ScrollPosition>, double)? drive =
+              preview.drive;
+          if (drive == null) {
+            _scrollTo(scrollable.position, _thereAndBack(t));
+          } else {
+            drive(positions, t);
+          }
           await tester.pump();
+          // A block scrolled into view for the first time decodes its picture.
+          if (_undecoded(tester)) await _decodeOnScreen(tester);
 
           final RenderRepaintBoundary boundary =
               tester.renderObject(find.byKey(_shot)) as RenderRepaintBoundary;
@@ -468,7 +575,7 @@ void main() {
 
         controller.dispose();
         // ignore: avoid_print
-        print('${preview.name}: $_frames frames, extent '
+        print('${preview.name}: ${preview.frames} frames, extent '
             '${extent.toStringAsFixed(0)}');
       }
     },

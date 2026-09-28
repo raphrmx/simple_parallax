@@ -1,5 +1,32 @@
 # SimpleParallax Versions
 
+## 2.3.0
+
+### Added
+
+- `placeholderColor`, `fadeIn` and `errorBuilder` on both widgets, for an `image` still loading or
+  failing. The colour fills the background until the picture is decoded, the picture fades in over
+  it, and the builder takes its place if it cannot be loaded. An image the cache already holds is
+  drawn at once, and the fade is left out under reduced motion. Until now this took a `background`
+  widget, which gave up the decoding at the size drawn.
+- The example's five hundred blocks fade in over a placeholder.
+- A sixth README animation, a carousel in a page with each card drifting both ways.
+- The example's recorders decode the pictures the way the widgets draw them. They precached the
+  asset, which the widgets no longer use since they decode at the size drawn, and could have
+  recorded blank backgrounds. Regenerated this way, the five animations and four screenshots
+  already published match the library, so they are left as they are.
+
+### Fixed
+
+- A background kept its first size when the widget changed in place: a new `scrollDirection`, a
+  new `overscan`, or a `crossParallax` added or removed left the layer laid out for the old one, so
+  part of the view went uncovered as it drifted. The flow now lays it out again.
+
+### Changed
+
+- The `.slivers` constructor documents how a list built lazily estimates its extent, and what to
+  hand it for the background to follow the scroll exactly.
+
 ## 2.2.0
 
 ### Added
