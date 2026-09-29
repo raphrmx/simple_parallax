@@ -20,7 +20,7 @@ whole page, or give each block of a list its own.
   <img src="https://public.comapps.be/packages/simple_parallax/item_mode_carousel.webp?v=1" alt="A carousel in a page, each card drifting with the row and with the page" width="330">
 </p>
 
-[![Live demo](https://img.shields.io/badge/Live_demo-comapps.web.app-3c9a70)](https://comapps.web.app/simple_parallax/)
+[![Live demo](https://img.shields.io/badge/Live_demo-packages.comapps.be-3c9a70)](https://packages.comapps.be/simple_parallax/)
 [![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=0175C2)](https://pub.dev/packages/simple_parallax)
 [![Build](https://img.shields.io/github/actions/workflow/status/raphrmx/simple_parallax/ci.yml?branch=main&label=build)](https://github.com/raphrmx/simple_parallax/actions/workflows/ci.yml)
 ![Maintainer](https://img.shields.io/badge/Maintainer-Raphael_Vrient-733d90)
@@ -117,7 +117,7 @@ nothing; the blur is the one effect worth profiling on an older phone.
 
 ## Example
 
-`example/` is the app behind the [live demo](https://comapps.web.app/simple_parallax/), one screen
+`example/` is the app behind the [live demo](https://packages.comapps.be/simple_parallax/), one screen
 per feature.
 
 ```sh
