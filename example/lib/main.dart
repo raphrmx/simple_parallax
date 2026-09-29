@@ -235,6 +235,12 @@ class _Menu extends StatelessWidget {
               'Move the mouse over it, or tilt the phone',
               const TiltDemo(),
             ),
+            _entry(
+              context,
+              'Everything at once',
+              'One carousel, every effect on its blocks, leaning',
+              const EverythingDemo(),
+            ),
           ],
         ),
       ),
@@ -1203,32 +1209,22 @@ class ItemOverlayDemo extends StatelessWidget {
   }
 }
 
-/// Container mode leaning with the mouse on a desktop, and with the phone on
-/// a phone.
+/// Aims [tilt] at the way the phone leans, next to the mouse that
+/// `PointerTilt` aims it at.
 ///
-/// One `TiltController` takes both. `PointerTilt` aims it at the mouse, and on
-/// a phone gravity aims it at the way the phone leans: read from the
-/// accelerometer in the app, from the device orientation in a browser. A
-/// gyroscope gives how fast the phone turns rather than where it points, and
-/// would drift. The controller smooths the two alike. Safari on iOS only lets a
-/// page read how the phone is held once a tap has allowed it, hence a button
-/// there.
+/// Gravity gives the lean: read from the accelerometer in the app, from the
+/// device orientation in a browser. A gyroscope gives how fast the phone turns
+/// rather than where it points, and would drift. Safari on iOS only lets a page
+/// read how the phone is held once a tap has allowed it, hence [allowButton].
 ///
 /// Nobody holds a phone flat, so the lean is measured from a rest position
 /// that slowly follows how the phone is held: tilt it and the background
 /// leans, keep it there and the background comes back to the middle. The
 /// reading is taken in portrait; a phone turned on its side swaps the axes.
-class TiltDemo extends StatefulWidget {
-  /// Creates the tilt demo.
-  const TiltDemo({super.key});
+mixin _PhoneTilt<T extends StatefulWidget> on State<T>, TickerProvider {
+  /// What the backgrounds of the screen lean with.
+  late final TiltController tilt = TiltController(vsync: this);
 
-  @override
-  State<TiltDemo> createState() => _TiltDemoState();
-}
-
-class _TiltDemoState extends State<TiltDemo>
-    with SingleTickerProviderStateMixin {
-  late final TiltController _tilt = TiltController(vsync: this);
   StreamSubscription<Offset>? _sensor;
 
   /// Whether a tap is needed before the phone's tilt can be read.
@@ -1264,6 +1260,18 @@ class _TiltDemoState extends State<TiltDemo>
     }
   }
 
+  /// The button that allows reading the tilt, while one is needed.
+  Widget? get allowButton {
+    if (!_mustAsk) return null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: FilledButton(
+        onPressed: _allow,
+        child: const Text('Allow tilting the phone'),
+      ),
+    );
+  }
+
   /// From the tap itself: Safari asks only when a tap is what asks. Once
   /// allowed, the readings reach the listener already there.
   void _allow() {
@@ -1280,26 +1288,44 @@ class _TiltDemoState extends State<TiltDemo>
     final Offset rest = _rest = Offset.lerp(_rest ?? gravity, gravity, 0.01)!;
     final Offset lean = gravity - rest;
     // Fifteen degrees either way is a full tilt: sin 15 is about a quarter.
-    _tilt.aim(Offset(-lean.dx, lean.dy) / 0.25);
+    tilt.aim(Offset(-lean.dx, lean.dy) / 0.25);
   }
 
   @override
   void dispose() {
     _silence?.cancel();
     _sensor?.cancel();
-    _tilt.dispose();
+    tilt.dispose();
     super.dispose();
   }
+}
+
+/// Container mode leaning with the mouse on a desktop, and with the phone on
+/// a phone.
+///
+/// One `TiltController` takes both: `PointerTilt` aims it at the mouse, and
+/// [_PhoneTilt] at the way the phone leans. The controller smooths the two
+/// alike.
+class TiltDemo extends StatefulWidget {
+  /// Creates the tilt demo.
+  const TiltDemo({super.key});
 
   @override
+  State<TiltDemo> createState() => _TiltDemoState();
+}
+
+class _TiltDemoState extends State<TiltDemo>
+    with SingleTickerProviderStateMixin, _PhoneTilt<TiltDemo> {
+  @override
   Widget build(BuildContext context) {
+    final Widget? allow = allowButton;
     return _Screen(
       child: PointerTilt(
-        controller: _tilt,
+        controller: tilt,
         child: SimpleParallaxContainer(
           image: _background,
           parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
-          tilt: TiltProperties(_tilt, distance: 28),
+          tilt: TiltProperties(tilt, distance: 28),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 28),
             child: Column(
@@ -1312,18 +1338,201 @@ class _TiltDemoState extends State<TiltDemo>
                         'drift. Scroll and lean at once.',
                   ),
                 ),
-                if (_mustAsk)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
-                    child: FilledButton(
-                      onPressed: _allow,
-                      child: const Text('Allow tilting the phone'),
-                    ),
-                  ),
+                if (allow != null) allow,
                 for (int index = 0; index < 20; index++) _Row(_noteAt(index)),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One block of [EverythingDemo]: its caption, and the effects it takes.
+class _Combo {
+  const _Combo(
+    this.label,
+    this.title, {
+    this.parallax = const ParallaxProperties(overscan: 1.8),
+    this.cross,
+    this.lean,
+    this.zoom,
+    this.blur,
+    this.overlay,
+  });
+
+  final String label;
+  final String title;
+  final ParallaxProperties parallax;
+
+  /// The drift with the page, across the row.
+  final ParallaxProperties? cross;
+
+  /// How far the background leans at a full tilt, or `null` for no tilt.
+  final double? lean;
+  final ZoomProperties? zoom;
+  final BlurProperties? blur;
+  final OverlayProperties? overlay;
+}
+
+/// The blocks of the row: four with every effect, each with figures of its
+/// own, then two with less of them.
+const List<_Combo> _combos = <_Combo>[
+  _Combo(
+    'ALL · LEAN 20 · BLUR -6',
+    'In focus by the middle',
+    parallax: ParallaxProperties(overscan: 1.8),
+    cross: ParallaxProperties(speed: 0.5),
+    lean: 20,
+    zoom: ZoomProperties(-0.6, reach: 0.5),
+    blur: BlurProperties(-6, reach: 0.5),
+    overlay: OverlayProperties.gradient(
+      LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.center,
+        colors: <Color>[Color(0xB3141110), Color(0x00141110)],
+      ),
+    ),
+  ),
+  _Combo(
+    'ALL · LEAN 12 · BLUR -3',
+    'The same, gently',
+    parallax: ParallaxProperties(speed: 0.5, overscan: 1.8),
+    cross: ParallaxProperties(speed: 0.3),
+    lean: 12,
+    zoom: ZoomProperties(-0.3, reach: 0.5),
+    blur: BlurProperties(-3, reach: 0.5),
+    overlay: OverlayProperties.gradient(
+      LinearGradient(
+        begin: Alignment.center,
+        end: Alignment.bottomCenter,
+        colors: <Color>[Color(0x00E07A3F), Color(0x99E07A3F)],
+      ),
+    ),
+  ),
+  _Combo(
+    'ALL · SENT BACK · BLUR -8',
+    'Sharp in passing',
+    parallax: ParallaxProperties(speed: 0.8, overscan: 1.8),
+    cross: ParallaxProperties(speed: 0.6),
+    lean: 24,
+    zoom: ZoomProperties(0.5, reach: 0.5, back: true),
+    blur: BlurProperties(-8, reach: 0.5, back: true),
+    overlay: OverlayProperties.gradient(
+      LinearGradient(
+        colors: <Color>[Color(0xB3141110), Color(0x00141110)],
+      ),
+    ),
+  ),
+  _Combo(
+    'ALL · LEAN 36 · REACH 0.3',
+    'Sharp well before the middle',
+    parallax: ParallaxProperties(overscan: 2),
+    cross: ParallaxProperties(speed: 0.9),
+    lean: 36,
+    zoom: ZoomProperties(-0.9, reach: 0.3),
+    blur: BlurProperties(-10, reach: 0.3),
+    overlay: OverlayProperties.gradient(
+      RadialGradient(
+        radius: 0.9,
+        colors: <Color>[Color(0x00141110), Color(0xCC141110)],
+      ),
+    ),
+  ),
+  _Combo(
+    'BOTH AXES · LEAN 24',
+    'No zoom, no blur',
+    parallax: ParallaxProperties(speed: 0.8, overscan: 1.8),
+    cross: ParallaxProperties(speed: 0.8),
+    lean: 24,
+    overlay: OverlayProperties.gradient(
+      LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[Color(0x001A237E), Color(0x991A237E)],
+      ),
+    ),
+  ),
+  _Combo('THE ROW ONLY', 'For comparison'),
+];
+
+/// Every effect at once, on the blocks of one carousel.
+///
+/// Each of the first four blocks slides with the row and with the page, leans
+/// with the phone or the mouse, arrives blurred and comes into focus on its
+/// way to the middle of the row as its zoom settles, and wears a gradient,
+/// each with figures of its own. The last two
+/// take less of it, to compare. Every block leans with the same controller,
+/// and only the backgrounds move: the captions and the gradients hold still.
+class EverythingDemo extends StatefulWidget {
+  /// Creates the demo of every effect at once.
+  const EverythingDemo({super.key});
+
+  @override
+  State<EverythingDemo> createState() => _EverythingDemoState();
+}
+
+class _EverythingDemoState extends State<EverythingDemo>
+    with SingleTickerProviderStateMixin, _PhoneTilt<EverythingDemo> {
+  @override
+  Widget build(BuildContext context) {
+    final Widget? allow = allowButton;
+    return _Screen(
+      color: _panel,
+      child: PointerTilt(
+        controller: tilt,
+        child: SimpleParallaxWidget(
+          children: <Widget>[
+            const _Screenful(
+              child: _Prose(
+                'Everything at once',
+                'One row of six blocks. The first four take every effect, '
+                    'each with figures of its own: they slide with the row '
+                    'and with the page, lean with the phone or the mouse, and '
+                    'arrive blurred and zoomed, sharp and settled by the '
+                    'middle of the row, under a gradient. The last two take '
+                    'less. Scroll down.',
+              ),
+            ),
+            if (allow != null) Center(child: allow),
+            SizedBox(
+              height: 440,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                itemCount: _combos.length,
+                separatorBuilder: (BuildContext context, int index) =>
+                    const SizedBox(width: 14),
+                itemBuilder: (BuildContext context, int index) {
+                  final _Combo combo = _combos[index];
+                  final double? lean = combo.lean;
+                  return SimpleParallaxItem(
+                    image: _background,
+                    width: 280,
+                    borderRadius: BorderRadius.circular(18),
+                    parallax: combo.parallax,
+                    crossParallax: combo.cross,
+                    tilt: lean == null
+                        ? null
+                        : TiltProperties(tilt, distance: lean),
+                    zoom: combo.zoom,
+                    blur: combo.blur,
+                    overlay: combo.overlay,
+                    child: _Caption(combo.label, combo.title),
+                  );
+                },
+              ),
+            ),
+            const _Screenful(
+              child: _Prose(
+                'Drag the row, scroll the page, tilt the phone',
+                'Dragging the row slides the backgrounds sideways and brings '
+                    'them into focus. Scrolling the page slides them '
+                    'down, and the phone or the mouse leans them, all at once.',
+              ),
+            ),
+          ],
         ),
       ),
     );

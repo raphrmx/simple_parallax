@@ -17,6 +17,7 @@ const List<String> _entries = <String>[
   'Stopping at the middle',
   'A tint over the image',
   'Leaning with the pointer',
+  'Everything at once',
 ];
 
 /// Opens [entry] from the menu, scrolls it, and comes back.

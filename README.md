@@ -101,8 +101,10 @@ PointerTilt(
 );
 ```
 
-For the phone, aim the same controller from a sensor package: the example does it with
-`sensors_plus`, and the package itself stays free of dependencies.
+For the phone, aim the same controller from how the phone is held: the example reads the
+accelerometer with `sensors_plus` in an app, and the `deviceorientation` event in a browser, which
+Safari on iOS only sends once a tap has allowed it. The package itself stays free of dependencies.
+Items take `tilt` as well, so a whole page of them can lean with one controller.
 
 ## Good to know
 
