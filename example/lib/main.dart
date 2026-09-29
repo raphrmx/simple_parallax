@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 import 'package:simple_parallax/simple_parallax.dart';
 import 'package:video_player/video_player.dart';
+
+import 'tilt_sensor.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -1206,9 +1207,12 @@ class ItemOverlayDemo extends StatelessWidget {
 /// a phone.
 ///
 /// One `TiltController` takes both. `PointerTilt` aims it at the mouse, and on
-/// Android and iOS the accelerometer aims it at the way the phone leans, read
-/// from gravity: a gyroscope gives how fast the phone turns rather than where
-/// it points, and would drift. The controller smooths the two alike.
+/// a phone gravity aims it at the way the phone leans: read from the
+/// accelerometer in the app, from the device orientation in a browser. A
+/// gyroscope gives how fast the phone turns rather than where it points, and
+/// would drift. The controller smooths the two alike. Safari on iOS only lets a
+/// page read how the phone is held once a tap has allowed it, hence a button
+/// there.
 ///
 /// Nobody holds a phone flat, so the lean is measured from a rest position
 /// that slowly follows how the phone is held: tilt it and the background
@@ -1225,7 +1229,16 @@ class TiltDemo extends StatefulWidget {
 class _TiltDemoState extends State<TiltDemo>
     with SingleTickerProviderStateMixin {
   late final TiltController _tilt = TiltController(vsync: this);
-  StreamSubscription<AccelerometerEvent>? _sensor;
+  StreamSubscription<Offset>? _sensor;
+
+  /// Whether a tap is needed before the phone's tilt can be read.
+  bool _mustAsk = false;
+
+  /// Whether the tilt has been read at all.
+  bool _read = false;
+
+  /// Waits for a first reading before offering to allow it.
+  Timer? _silence;
 
   /// Gravity across the screen, in g, when the phone is held at rest.
   Offset? _rest;
@@ -1233,21 +1246,36 @@ class _TiltDemoState extends State<TiltDemo>
   @override
   void initState() {
     super.initState();
-    if (defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS) {
-      _sensor = accelerometerEventStream(
-        samplingPeriod: SensorInterval.gameInterval,
-      ).listen(
-        _onGravity,
-        // No sensor, or no permission to read it: the mouse is all there is.
-        onError: (Object _) {},
-        cancelOnError: true,
-      );
+    _sensor = gravityAcrossScreen().listen(
+      _onGravity,
+      // No sensor, or no permission to read it: the mouse is all there is.
+      onError: (Object _) {},
+      cancelOnError: true,
+    );
+    // Chrome sends the tilt at once. Safari on iOS sends nothing until a tap
+    // has allowed it, so a phone that stays silent is offered the button.
+    // Chrome has the same request, and needs no answer to it.
+    final bool phone = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    if (phone && tiltNeedsPermission) {
+      _silence = Timer(const Duration(seconds: 1), () {
+        if (mounted && !_read) setState(() => _mustAsk = true);
+      });
     }
   }
 
-  void _onGravity(AccelerometerEvent event) {
-    final Offset gravity = Offset(event.x, event.y) / 9.81;
+  /// From the tap itself: Safari asks only when a tap is what asks. Once
+  /// allowed, the readings reach the listener already there.
+  void _allow() {
+    askForTilt().then((bool _) {
+      if (mounted) setState(() => _mustAsk = false);
+    });
+  }
+
+  void _onGravity(Offset gravity) {
+    _read = true;
+    // Readings that come late, or once allowed, need no button.
+    if (_mustAsk) setState(() => _mustAsk = false);
     // The rest position catches up over a couple of seconds.
     final Offset rest = _rest = Offset.lerp(_rest ?? gravity, gravity, 0.01)!;
     final Offset lean = gravity - rest;
@@ -1257,6 +1285,7 @@ class _TiltDemoState extends State<TiltDemo>
 
   @override
   void dispose() {
+    _silence?.cancel();
     _sensor?.cancel();
     _tilt.dispose();
     super.dispose();
@@ -1283,6 +1312,14 @@ class _TiltDemoState extends State<TiltDemo>
                         'drift. Scroll and lean at once.',
                   ),
                 ),
+                if (_mustAsk)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: FilledButton(
+                      onPressed: _allow,
+                      child: const Text('Allow tilting the phone'),
+                    ),
+                  ),
                 for (int index = 0; index < 20; index++) _Row(_noteAt(index)),
               ],
             ),
