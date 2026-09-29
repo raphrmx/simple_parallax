@@ -9,6 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  sensors_plus: ^7.1.0
   simple_parallax:
     path: ../
   video_player: ^2.14.0

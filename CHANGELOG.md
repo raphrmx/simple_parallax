@@ -1,5 +1,18 @@
 # SimpleParallax Versions
 
+## 2.4.0
+
+### Added
+
+- `tilt` on both widgets: the background leans away from an offset fed from outside the scroll,
+  up to a `distance` in logical pixels, on top of the drift. The layer is drawn that much larger
+  on every side, and decoded to match. It holds still under reduced motion, and on an item it
+  works outside a scrollable too.
+- `TiltController`, which eases such an offset towards where it is aimed and stops ticking once it
+  has settled, and `PointerTilt`, which aims one at the mouse. The package takes no dependency for
+  it: the tilt of the phone comes from whichever sensor package the app already uses.
+- The example leans a page with the mouse, and with the phone through `sensors_plus`.
+
 ## 2.3.2
 
 ### Changed

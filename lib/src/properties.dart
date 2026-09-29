@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 /// How the background drifts behind the content.
@@ -59,6 +60,61 @@ class ParallaxProperties {
 
   @override
   String toString() => 'ParallaxProperties(speed: $speed, overscan: $overscan)';
+}
+
+/// How the background leans with a tilt fed from outside the scroll.
+///
+/// The drift follows the scroll; this follows [source], an offset from `-1` to
+/// `1` on each axis that says where the viewer stands: the pointer over the
+/// page, the tilt of the phone, or anything else. The background moves the
+/// other way, up to [distance] logical pixels, as something far behind the
+/// screen would. `TiltController` eases such an offset in, and `PointerTilt`
+/// feeds one from the mouse.
+///
+/// The layer is drawn [distance] larger on every side to make room, so the
+/// image is cropped a little more for it. A tilt adds to the drift rather than
+/// taking its place, and holds still with it when the platform asks for
+/// reduced motion.
+///
+/// ---
+///
+/// ### Parameters:
+/// - [source]: the offset to lean away from, `-1` to `1` on each axis, `0`
+///   for none. Anything outside that range is clamped.
+/// - [distance]: how far the background moves at a full tilt, in logical
+///   pixels.
+///
+/// ### Example:
+/// ```dart
+/// SimpleParallaxItem(
+///   image: const AssetImage('assets/images/background.webp'),
+///   height: 300,
+///   tilt: TiltProperties(controller, distance: 20),
+/// );
+/// ```
+class TiltProperties {
+  /// Creates the tilt settings, given the offset to follow.
+  const TiltProperties(this.source, {this.distance = 16})
+      : assert(distance >= 0, 'distance cannot be negative');
+
+  /// The offset to lean away from, `-1` to `1` on each axis.
+  final ValueListenable<Offset> source;
+
+  /// How far the background moves at a full tilt, in logical pixels.
+  final double distance;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TiltProperties &&
+          other.source == source &&
+          other.distance == distance;
+
+  @override
+  int get hashCode => Object.hash(source, distance);
+
+  @override
+  String toString() => 'TiltProperties($source, distance: $distance)';
 }
 
 /// How the background scales as it travels.

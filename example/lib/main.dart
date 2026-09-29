@@ -1,5 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'package:simple_parallax/simple_parallax.dart';
 import 'package:video_player/video_player.dart';
 
@@ -223,6 +227,12 @@ class _Menu extends StatelessWidget {
               'A tint over the image',
               'A fixed overlay, darkened, tinted or faded',
               const ItemOverlayDemo(),
+            ),
+            _entry(
+              context,
+              'Leaning with the pointer',
+              'Move the mouse over it, or tilt the phone',
+              const TiltDemo(),
             ),
           ],
         ),
@@ -1187,6 +1197,97 @@ class ItemOverlayDemo extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Container mode leaning with the mouse on a desktop, and with the phone on
+/// a phone.
+///
+/// One `TiltController` takes both. `PointerTilt` aims it at the mouse, and on
+/// Android and iOS the accelerometer aims it at the way the phone leans, read
+/// from gravity: a gyroscope gives how fast the phone turns rather than where
+/// it points, and would drift. The controller smooths the two alike.
+///
+/// Nobody holds a phone flat, so the lean is measured from a rest position
+/// that slowly follows how the phone is held: tilt it and the background
+/// leans, keep it there and the background comes back to the middle. The
+/// reading is taken in portrait; a phone turned on its side swaps the axes.
+class TiltDemo extends StatefulWidget {
+  /// Creates the tilt demo.
+  const TiltDemo({super.key});
+
+  @override
+  State<TiltDemo> createState() => _TiltDemoState();
+}
+
+class _TiltDemoState extends State<TiltDemo>
+    with SingleTickerProviderStateMixin {
+  late final TiltController _tilt = TiltController(vsync: this);
+  StreamSubscription<AccelerometerEvent>? _sensor;
+
+  /// Gravity across the screen, in g, when the phone is held at rest.
+  Offset? _rest;
+
+  @override
+  void initState() {
+    super.initState();
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      _sensor = accelerometerEventStream(
+        samplingPeriod: SensorInterval.gameInterval,
+      ).listen(
+        _onGravity,
+        // No sensor, or no permission to read it: the mouse is all there is.
+        onError: (Object _) {},
+        cancelOnError: true,
+      );
+    }
+  }
+
+  void _onGravity(AccelerometerEvent event) {
+    final Offset gravity = Offset(event.x, event.y) / 9.81;
+    // The rest position catches up over a couple of seconds.
+    final Offset rest = _rest = Offset.lerp(_rest ?? gravity, gravity, 0.01)!;
+    final Offset lean = gravity - rest;
+    // Fifteen degrees either way is a full tilt: sin 15 is about a quarter.
+    _tilt.aim(Offset(-lean.dx, lean.dy) / 0.25);
+  }
+
+  @override
+  void dispose() {
+    _sensor?.cancel();
+    _tilt.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Screen(
+      child: PointerTilt(
+        controller: _tilt,
+        child: SimpleParallaxContainer(
+          image: _background,
+          parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
+          tilt: TiltProperties(_tilt, distance: 28),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            child: Column(
+              children: <Widget>[
+                const _Row(
+                  _Note(
+                    Color(0xFFE07A3F),
+                    'Move the mouse, or tilt the phone',
+                    'The background leans the other way, on top of the '
+                        'drift. Scroll and lean at once.',
+                  ),
+                ),
+                for (int index = 0; index < 20; index++) _Row(_noteAt(index)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

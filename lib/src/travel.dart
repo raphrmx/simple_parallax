@@ -36,6 +36,16 @@ class TravelProgress {
   double value = 0;
 }
 
+/// How far [tilt] moves the background, `0` without one.
+Offset leanOf(TiltProperties? tilt) {
+  if (tilt == null || tilt.distance == 0) return Offset.zero;
+  final Offset at = tilt.source.value;
+  return Offset(
+    -at.dx.clamp(-1.0, 1.0) * tilt.distance,
+    -at.dy.clamp(-1.0, 1.0) * tilt.distance,
+  );
+}
+
 /// Step the blur sigma is rounded to, so the filter is rebuilt only when it
 /// changes visibly.
 const double _blurStep = 0.25;

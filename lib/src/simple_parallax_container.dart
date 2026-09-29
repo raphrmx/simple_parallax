@@ -43,6 +43,8 @@ import 'travel.dart';
 /// - [parallax]: how the background drifts, its speed and its overscan.
 /// - [zoom]: how it scales down the page, `null` for not at all.
 /// - [blur]: how it is blurred down the page, `null` for not at all.
+/// - [tilt]: how it leans with the pointer or the phone, `null` for not at
+///   all.
 /// - [overlay]: a fixed tint over the background and under the content, `null`
 ///   for none.
 /// - [height]: forces the viewport height instead of taking it from the
@@ -126,6 +128,7 @@ class SimpleParallaxContainer extends StatefulWidget {
     this.parallax = const ParallaxProperties(),
     this.zoom,
     this.blur,
+    this.tilt,
     this.overlay,
     this.height,
     this.width,
@@ -174,6 +177,7 @@ class SimpleParallaxContainer extends StatefulWidget {
     this.parallax = const ParallaxProperties(),
     this.zoom,
     this.blur,
+    this.tilt,
     this.overlay,
     this.height,
     this.width,
@@ -236,6 +240,10 @@ class SimpleParallaxContainer extends StatefulWidget {
   /// The layer is blurred before [zoom] scales it, so a zoom carries the blur
   /// along with everything else.
   final BlurProperties? blur;
+
+  /// How the background leans with a tilt fed from outside the scroll, `null`
+  /// for not at all. The lean adds to the drift.
+  final TiltProperties? tilt;
 
   /// A fixed tint over the background, `null` for none.
   ///
@@ -475,10 +483,17 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
         final double viewportWidth = widget.width ??
             (constraints.hasBoundedWidth ? constraints.maxWidth : screen.width);
 
+        final double margin = 2 * (widget.tilt?.distance ?? 0);
         final Widget background = _layer(
           _horizontal
-              ? Size(viewportWidth * widget.parallax.overscan, viewportHeight)
-              : Size(viewportWidth, viewportHeight * widget.parallax.overscan),
+              ? Size(
+                  viewportWidth * widget.parallax.overscan + margin,
+                  viewportHeight + margin,
+                )
+              : Size(
+                  viewportWidth + margin,
+                  viewportHeight * widget.parallax.overscan + margin,
+                ),
           devicePixelRatio,
           still: still,
         );
@@ -507,6 +522,7 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
                       axis: widget.scrollDirection,
                       parallax: widget.parallax,
                       zoom: widget.zoom,
+                      tilt: widget.tilt,
                       still: still,
                       // A right-to-left page scrolls its content rightwards.
                       reversed: axisDirectionIsReversed(
@@ -532,7 +548,7 @@ class _SimpleParallaxContainerState extends State<SimpleParallaxContainer> {
 }
 
 /// Places the background behind the viewport according to how far down the page
-/// the content has scrolled.
+/// the content has scrolled, and leans it with the [tilt].
 ///
 /// Repainting is bound to the metrics of the content rather than to a rebuild,
 /// so a scroll costs one paint of the background and no widget work at all.
@@ -545,15 +561,23 @@ class _DriftDelegate extends FlowDelegate {
     required this.axis,
     required this.parallax,
     required this.zoom,
+    required this.tilt,
     required this.still,
     required this.reversed,
-  }) : super(repaint: still ? null : metrics);
+  }) : super(
+          repaint: still
+              ? null
+              : tilt == null
+                  ? metrics
+                  : Listenable.merge(<Listenable>[metrics, tilt.source]),
+        );
 
   final ValueListenable<ScrollMetrics?> metrics;
   final TravelProgress progress;
   final Axis axis;
   final ParallaxProperties parallax;
   final ZoomProperties? zoom;
+  final TiltProperties? tilt;
 
   /// Whether the background is held at the top of its travel.
   final bool still;
@@ -564,19 +588,24 @@ class _DriftDelegate extends FlowDelegate {
 
   bool get _horizontal => axis == Axis.horizontal;
 
+  /// How far the layer reaches past the viewport on each side, for the tilt.
+  double get _margin => tilt?.distance ?? 0;
+
   /// The layer is the viewport on the cross axis and the overscan times it on
-  /// the scrolled axis, both tight.
+  /// the scrolled axis, plus the tilt margin on every side, all tight.
   @override
-  BoxConstraints getConstraintsForChild(int i, BoxConstraints constraints) =>
-      _horizontal
-          ? BoxConstraints.tightFor(
-              width: constraints.maxWidth * parallax.overscan,
-              height: constraints.maxHeight,
-            )
-          : BoxConstraints.tightFor(
-              width: constraints.maxWidth,
-              height: constraints.maxHeight * parallax.overscan,
-            );
+  BoxConstraints getConstraintsForChild(int i, BoxConstraints constraints) {
+    final double margin = 2 * _margin;
+    return _horizontal
+        ? BoxConstraints.tightFor(
+            width: constraints.maxWidth * parallax.overscan + margin,
+            height: constraints.maxHeight + margin,
+          )
+        : BoxConstraints.tightFor(
+            width: constraints.maxWidth + margin,
+            height: constraints.maxHeight * parallax.overscan + margin,
+          );
+  }
 
   @override
   void paintChildren(FlowPaintingContext context) {
@@ -593,8 +622,15 @@ class _DriftDelegate extends FlowDelegate {
     // never runs past the overscan it was drawn with.
     final double offset =
         at * extent * (parallax.overscan - 1) * parallax.speed;
+    final double margin = _margin;
+    // The margin is left out of the drift and spent on the tilt alone.
+    final Offset lean =
+        -Offset(margin, margin) + (still ? Offset.zero : leanOf(tilt));
     if (!offset.isFinite) {
-      context.paintChild(0);
+      context.paintChild(
+        0,
+        transform: Matrix4.translationValues(lean.dx, lean.dy, 0),
+      );
       return;
     }
 
@@ -605,26 +641,28 @@ class _DriftDelegate extends FlowDelegate {
         ? (_horizontal
                 ? viewport.width - layer.width
                 : viewport.height - layer.height) +
+            2 * margin +
             offset
         : -offset;
 
     context.paintChild(
       0,
       transform: placed(
-        _horizontal ? Offset(move, 0) : Offset(0, move),
+        (_horizontal ? Offset(move, 0) : Offset(0, move)) + lean,
         scaleOf(zoom, at),
         viewport.center(Offset.zero),
       ),
     );
   }
 
-  /// The layer is sized from the axis and the overscan, so a change of either
-  /// has to lay it out again. Left to its default, a [Flow] never does, and the
+  /// The layer is sized from the axis, the overscan and the tilt margin, so a
+  /// change of any of them has to lay it out again. Left to its default, a [Flow] never does, and the
   /// layer keeps the size of the first delegate.
   @override
   bool shouldRelayout(_DriftDelegate oldDelegate) =>
       axis != oldDelegate.axis ||
-      parallax.overscan != oldDelegate.parallax.overscan;
+      parallax.overscan != oldDelegate.parallax.overscan ||
+      _margin != oldDelegate._margin;
 
   @override
   bool shouldRepaint(_DriftDelegate oldDelegate) =>
@@ -632,6 +670,7 @@ class _DriftDelegate extends FlowDelegate {
       axis != oldDelegate.axis ||
       parallax != oldDelegate.parallax ||
       zoom != oldDelegate.zoom ||
+      tilt != oldDelegate.tilt ||
       still != oldDelegate.still ||
       reversed != oldDelegate.reversed;
 }

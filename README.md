@@ -85,6 +85,25 @@ SimpleParallaxItem(
 `zoom` and `blur` also take `reach` and `back`, to finish part way, `0.5` being the middle of the
 screen, then hold there or turn back.
 
+## Leaning with the mouse or the phone
+
+`tilt` leans the background away from an offset you feed it, on top of the drift. A
+`TiltController` smooths that offset, and `PointerTilt` aims it at the mouse:
+
+```dart
+PointerTilt(
+  controller: tilt, // a TiltController, created with a vsync
+  child: SimpleParallaxContainer(
+    image: const AssetImage('assets/images/background.webp'),
+    tilt: TiltProperties(tilt, distance: 24),
+    child: Column(children: items),
+  ),
+);
+```
+
+For the phone, aim the same controller from a sensor package: the example does it with
+`sensors_plus`, and the package itself stays free of dependencies.
+
 ## Good to know
 
 - `background` takes a widget instead of an `image`: a gradient, a video, or an `Image` you set up
@@ -113,7 +132,8 @@ Every parameter is documented in the
 
 Scrolling repaints the background and rebuilds no widget, and lists build as they scroll. Images
 are decoded at the size they are drawn, not at full resolution. The drift and the zoom cost next to
-nothing; the blur is the one effect worth profiling on an older phone.
+nothing; the blur is the one effect worth profiling on an older phone. A tilt repaints the
+background each time its offset moves, and a `TiltController` stops ticking once it has settled.
 
 ## Example
 

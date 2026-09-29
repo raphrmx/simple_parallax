@@ -20,6 +20,11 @@
 /// the blur each carry their own `reach` and `back`, so one can run the whole
 /// travel while the other stops at the middle.
 ///
+/// Both modes also take a [TiltProperties], which leans the background with an
+/// offset fed from outside the scroll: [PointerTilt] feeds one from the mouse,
+/// through a [TiltController] that smooths it, and a sensor package can feed
+/// the tilt of the phone the same way.
+///
 /// Both scroll views take a `smooth` flag, which eases the mouse wheel in and
 /// brings it to an axis a [Scrollable] otherwise leaves untouched. Handed a
 /// [SmoothScrollController] as their `controller`, they keep it on.
@@ -48,9 +53,11 @@ import 'src/simple_parallax_container.dart';
 import 'src/simple_parallax_item.dart';
 import 'src/simple_parallax_widget.dart';
 import 'src/smooth_scroll.dart';
+import 'src/tilt.dart';
 
 export 'src/properties.dart';
 export 'src/simple_parallax_container.dart';
 export 'src/simple_parallax_item.dart';
 export 'src/simple_parallax_widget.dart';
 export 'src/smooth_scroll.dart' show SmoothScrollController;
+export 'src/tilt.dart';

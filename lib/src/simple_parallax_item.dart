@@ -21,7 +21,7 @@ import 'travel.dart';
 /// included.
 ///
 /// Outside a scrollable the background is simply drawn still, which is what you
-/// want for a preview or a test. It is drawn still too when the platform asks
+/// want for a preview or a test, and follows only a [tilt] if it has one. It is drawn still too when the platform asks
 /// for reduced motion, unless [respectReducedMotion] is turned off.
 ///
 /// The background is either an [image] or a [background] widget, never both. The
@@ -42,6 +42,8 @@ import 'travel.dart';
 ///   running that way, `null` for not at all.
 /// - [zoom]: how it scales as it crosses, `null` for not at all.
 /// - [blur]: how it is blurred as it crosses, `null` for not at all.
+/// - [tilt]: how it leans with the pointer or the phone, `null` for not at
+///   all.
 /// - [overlay]: a fixed tint over the background and under [child], `null` for
 ///   none.
 /// - [height]: item height. Defaults to the screen height in a vertical
@@ -134,6 +136,7 @@ class SimpleParallaxItem extends StatelessWidget {
     this.crossParallax,
     this.zoom,
     this.blur,
+    this.tilt,
     this.overlay,
     this.height,
     this.width,
@@ -189,6 +192,13 @@ class SimpleParallaxItem extends StatelessWidget {
   /// The layer is blurred before [zoom] scales it, so a zoom carries the blur
   /// along with everything else.
   final BlurProperties? blur;
+
+  /// How the background leans with a tilt fed from outside the scroll, `null`
+  /// for not at all.
+  ///
+  /// The lean adds to the drift, and works outside a scrollable too, where it
+  /// is all the block does.
+  final TiltProperties? tilt;
 
   /// A fixed tint over the background, `null` for none.
   ///
@@ -334,10 +344,11 @@ class SimpleParallaxItem extends StatelessWidget {
           devicePixelRatio: devicePixelRatio,
           still: still,
         );
-        if (followed == null) return layer;
+        if (followed == null && tilt == null) return layer;
 
         final TravelProgress progress = TravelProgress();
-        final BlurProperties? blur = this.blur;
+        // Outside a scrollable there is no crossing for the blur to follow.
+        final BlurProperties? blur = followed == null ? null : this.blur;
         return Flow.unwrapped(
           delegate: _ParallaxFlowDelegate(
             scrollable: followed,
@@ -347,6 +358,7 @@ class SimpleParallaxItem extends StatelessWidget {
             parallax: parallax,
             crossParallax: crossParallax,
             zoom: zoom,
+            tilt: tilt,
             still: still,
           ),
           children: <Widget>[
@@ -364,7 +376,7 @@ class SimpleParallaxItem extends StatelessWidget {
   }
 
   /// The background layer of a [block], drawn larger by the overscan along
-  /// the axes [followed] and [crossed].
+  /// the axes [followed] and [crossed], and by the [tilt] all round.
   Widget _layer(
     Size block, {
     required Axis? followed,
@@ -382,11 +394,12 @@ class SimpleParallaxItem extends StatelessWidget {
             crossParallax: crossParallax,
           );
       final ZoomProperties? zoom = this.zoom;
+      final double margin = 2 * (tilt?.distance ?? 0);
       image = decodedFor(
         image,
         layer: Size(
-          block.width * along(Axis.horizontal),
-          block.height * along(Axis.vertical),
+          block.width * along(Axis.horizontal) + margin,
+          block.height * along(Axis.vertical) + margin,
         ),
         devicePixelRatio: devicePixelRatio,
         fit: fit,
@@ -483,8 +496,9 @@ Axis _across(Axis axis) =>
     axis == Axis.horizontal ? Axis.vertical : Axis.horizontal;
 
 /// Places the background inside the item according to how far the item has
-/// travelled across the viewport, and across the viewport running the other
-/// way when there is a [crossed] scrollable to follow as well.
+/// travelled across the viewport, across the viewport running the other way
+/// when there is a [crossed] scrollable to follow as well, and leans it with
+/// the [tilt].
 ///
 /// Repainting is bound to the scroll positions rather than to a rebuild, so a
 /// scroll costs one paint and no widget work at all. The progress along
@@ -499,21 +513,34 @@ class _ParallaxFlowDelegate extends FlowDelegate {
     required this.parallax,
     required this.crossParallax,
     required this.zoom,
+    required this.tilt,
     required this.still,
-  })  : _axis = scrollable.position.axis,
+  })  : _axis = scrollable?.position.axis,
         _crossAxis = crossed?.position.axis,
-        super(
-          repaint: still
-              ? null
-              : crossed == null
-                  ? scrollable.position
-                  : Listenable.merge(<Listenable>[
-                      scrollable.position,
-                      crossed.position,
-                    ]),
-        );
+        super(repaint: still ? null : _repaintOf(scrollable, crossed, tilt));
 
-  final ScrollableState scrollable;
+  /// Everything that moves the background: the scrollables followed and the
+  /// tilt.
+  static Listenable? _repaintOf(
+    ScrollableState? scrollable,
+    ScrollableState? crossed,
+    TiltProperties? tilt,
+  ) {
+    final List<Listenable> all = <Listenable>[
+      if (scrollable != null) scrollable.position,
+      if (crossed != null) crossed.position,
+      if (tilt != null) tilt.source,
+    ];
+    return switch (all.length) {
+      0 => null,
+      1 => all.single,
+      _ => Listenable.merge(all),
+    };
+  }
+
+  /// The scrollable followed, or `null` outside one, where only the [tilt]
+  /// moves the background.
+  final ScrollableState? scrollable;
 
   /// The scrollable running across [scrollable], followed through
   /// [crossParallax], or `null` for no drift that way.
@@ -524,13 +551,14 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   final ParallaxProperties parallax;
   final ParallaxProperties? crossParallax;
   final ZoomProperties? zoom;
+  final TiltProperties? tilt;
 
   /// Whether the block is drawn at [_still] whatever the scroll.
   final bool still;
 
   /// The axis of [scrollable] and of [crossed], as they stood when this
   /// delegate was made.
-  final Axis _axis;
+  final Axis? _axis;
   final Axis? _crossAxis;
 
   /// How much larger than the block the layer is along [axis].
@@ -542,13 +570,17 @@ class _ParallaxFlowDelegate extends FlowDelegate {
         crossParallax: crossParallax,
       );
 
+  /// How far the layer reaches past the block on each side, for the tilt.
+  double get _margin => tilt?.distance ?? 0;
+
   /// The layer is the block times the overscan along each axis followed, and
-  /// the block itself along an axis that is not, all tight.
+  /// the block itself along an axis that is not, plus the tilt margin on
+  /// every side, all tight.
   @override
   BoxConstraints getConstraintsForChild(int i, BoxConstraints constraints) =>
       BoxConstraints.tightFor(
-        width: constraints.maxWidth * _along(Axis.horizontal),
-        height: constraints.maxHeight * _along(Axis.vertical),
+        width: constraints.maxWidth * _along(Axis.horizontal) + 2 * _margin,
+        height: constraints.maxHeight * _along(Axis.vertical) + 2 * _margin,
       );
 
   /// Where the background stands along [followed], as an alignment from `-1`
@@ -563,18 +595,25 @@ class _ParallaxFlowDelegate extends FlowDelegate {
   @override
   void paintChildren(FlowPaintingContext context) {
     final Size? backgroundSize = context.getChildSize(0);
-    final double? at =
-        still ? _still : _progressOf(scrollable, itemContext, _axis);
+    final ScrollableState? scrollable = this.scrollable;
+    final double? at = still || scrollable == null
+        ? _still
+        : _progressOf(scrollable, itemContext, _axis!);
     progress.value = at ?? 0;
 
+    final double margin = _margin;
     if (at == null || backgroundSize == null) {
       // Nothing to measure against yet; draw the background where it stands so
       // the first frame is not blank.
-      context.paintChild(0);
+      context.paintChild(
+        0,
+        transform: Matrix4.translationValues(-margin, -margin, 0),
+      );
       return;
     }
 
-    final double shift = _shift(scrollable, at, parallax.speed);
+    final double shift =
+        scrollable == null ? 0 : _shift(scrollable, at, parallax.speed);
 
     double crossShift = 0;
     final ScrollableState? crossed = this.crossed;
@@ -589,31 +628,39 @@ class _ParallaxFlowDelegate extends FlowDelegate {
     final Alignment alignment = _axis == Axis.horizontal
         ? Alignment(shift, crossShift)
         : Alignment(crossShift, shift);
-    // The flow fills the block, so its size is the block's.
+    // The flow fills the block, so its size is the block's. The margin is
+    // left out of the alignment and spent on the tilt alone.
     final Rect childRect = alignment.inscribe(
-      backgroundSize,
+      Size(
+        backgroundSize.width - 2 * margin,
+        backgroundSize.height - 2 * margin,
+      ),
       Offset.zero & context.size,
     );
 
     context.paintChild(
       0,
       transform: placed(
-        childRect.topLeft,
-        scaleOf(zoom, at),
+        childRect.topLeft -
+            Offset(margin, margin) +
+            (still ? Offset.zero : leanOf(tilt)),
+        // Outside a scrollable there is no crossing for the zoom to follow.
+        scrollable == null ? 1 : scaleOf(zoom, at),
         context.size.center(Offset.zero),
       ),
     );
   }
 
-  /// The layer is sized from the axes followed and their overscan, so a change
-  /// of any of them has to lay it out again. Left to its default, a [Flow]
+  /// The layer is sized from the axes followed, their overscan and the tilt
+  /// margin, so a change of any of them has to lay it out again. Left to its default, a [Flow]
   /// never does, and the layer keeps the size of the first delegate.
   @override
   bool shouldRelayout(_ParallaxFlowDelegate oldDelegate) =>
       _axis != oldDelegate._axis ||
       _crossAxis != oldDelegate._crossAxis ||
       parallax.overscan != oldDelegate.parallax.overscan ||
-      crossParallax?.overscan != oldDelegate.crossParallax?.overscan;
+      crossParallax?.overscan != oldDelegate.crossParallax?.overscan ||
+      _margin != oldDelegate._margin;
 
   @override
   bool shouldRepaint(_ParallaxFlowDelegate oldDelegate) =>
@@ -623,5 +670,6 @@ class _ParallaxFlowDelegate extends FlowDelegate {
       parallax != oldDelegate.parallax ||
       crossParallax != oldDelegate.crossParallax ||
       zoom != oldDelegate.zoom ||
+      tilt != oldDelegate.tilt ||
       still != oldDelegate.still;
 }
