@@ -4,22 +4,27 @@ Parallax backgrounds for Flutter, in pure Dart with no dependencies. Put one bac
 whole page, or give each block of a list its own.
 
 <p>
-  <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp?v=3" alt="Container mode, scrolling down" width="330">
-  &nbsp;
-  <img src="https://public.comapps.be/packages/simple_parallax/container_mode_horizontal.webp?v=3" alt="Container mode, scrolling sideways" width="330">
-</p>
-<p>
-  <img src="https://public.comapps.be/packages/simple_parallax/item_mode.webp?v=3" alt="Item mode, scrolling down" width="330">
-  &nbsp;
-  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_horizontal.webp?v=3" alt="Item mode, scrolling sideways" width="330">
+  <img src="https://public.comapps.be/packages/simple_parallax/travel_page.webp?v=1" alt="A travel page, every picture on it a parallax block" width="670">
 </p>
 
 <p>
-  <img src="https://public.comapps.be/packages/simple_parallax/widget_background.webp?v=3" alt="A gradient as the background" width="330">
+  <img src="https://public.comapps.be/packages/simple_parallax/container_mode.webp?v=4" alt="Container mode, scrolling down" width="330">
   &nbsp;
-  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_carousel.webp?v=1" alt="A carousel in a page, each card drifting with the row and with the page" width="330">
+  <img src="https://public.comapps.be/packages/simple_parallax/container_mode_horizontal.webp?v=4" alt="Container mode, scrolling sideways" width="330">
+</p>
+<p>
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode.webp?v=4" alt="Item mode, scrolling down" width="330">
+  &nbsp;
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_horizontal.webp?v=4" alt="Item mode, scrolling sideways" width="330">
 </p>
 
+<p>
+  <img src="https://public.comapps.be/packages/simple_parallax/widget_background.webp?v=4" alt="A gradient as the background" width="330">
+  &nbsp;
+  <img src="https://public.comapps.be/packages/simple_parallax/item_mode_carousel.webp?v=2" alt="A carousel in a page, each card drifting with the row and with the page" width="330">
+</p>
+
+[![Video tour](https://img.shields.io/badge/Video-Guided_tour-c4302b?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=RO3DF8OXI5w)
 [![Live demo](https://img.shields.io/badge/Live_demo-packages.comapps.be-3c9a70)](https://packages.comapps.be/simple_parallax/)
 [![Pub Version](https://img.shields.io/pub/v/simple_parallax?color=0175C2)](https://pub.dev/packages/simple_parallax)
 [![Build](https://img.shields.io/github/actions/workflow/status/raphrmx/simple_parallax/ci.yml?branch=main&label=build)](https://github.com/raphrmx/simple_parallax/actions/workflows/ci.yml)

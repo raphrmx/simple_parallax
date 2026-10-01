@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 /// How long one wheel notch is animated over.
@@ -150,6 +151,14 @@ class SmoothScrollPosition extends ScrollPositionWithSingleContext {
         _target = null;
       }
     });
+    // Which way the user scrolls, as a notch landed at once tells it: a
+    // floating app bar reads it to come back on the way up. The animation
+    // says nothing of it, and settles back to idle once done.
+    if (activity is DrivenScrollActivity) {
+      updateUserScrollDirection(
+        delta < 0 ? ScrollDirection.forward : ScrollDirection.reverse,
+      );
+    }
   }
 
   /// Whether a notch of [delta] would move the view at all, counted from where

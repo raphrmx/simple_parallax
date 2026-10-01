@@ -15,6 +15,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_parallax_example/main.dart';
+import 'package:simple_parallax_example/showcase.dart';
 
 /// Logical size of a screenshot, and the size the WebP ends up at.
 const Size _size = Size(1200, 750);
@@ -43,6 +44,7 @@ class _Shot {
 }
 
 const List<_Shot> _shots = <_Shot>[
+  _Shot('travel_page', ShowcaseDemo(), 0),
   _Shot('container_mode', ContainerVerticalDemo(), 0.38),
   _Shot('item_mode', ItemVerticalDemo(), 0.26),
   _Shot('widget_background', ContainerCustomDemo(), 0.38),

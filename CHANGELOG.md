@@ -1,5 +1,23 @@
 # SimpleParallax Versions
 
+## 2.4.1
+
+### Fixed
+
+- A floating `SliverAppBar` comes back when the eased wheel scrolls up, as it does under a drag
+  or a plain wheel. An eased notch is an animation, which told the view nothing of the way the user
+  scrolls, and a floating header only shows again on the way up.
+
+### Changed
+
+- The example opens on a travel page, every picture on it a parallax block: the cover drifting
+  and growing, photos coming into focus or settling beside the text, a row of cards following the
+  row and the page, a band of colour drifting like a photo.
+- The example is drawn light, over six photos instead of one, its menu under a parallax cover and
+  each entry with a thumbnail; a new screen puts every effect on the blocks of one carousel.
+- The README opens on the travel page, and its previews and the pub.dev screenshots are drawn
+  anew from the example, behind a cover.
+
 ## 2.4.0
 
 ### Added

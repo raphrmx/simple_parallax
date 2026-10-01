@@ -6,25 +6,47 @@ import 'package:flutter/material.dart';
 import 'package:simple_parallax/simple_parallax.dart';
 import 'package:video_player/video_player.dart';
 
+import 'showcase.dart';
 import 'tilt_sensor.dart';
 
 void main() => runApp(const ExampleApp());
 
-const AssetImage _background = AssetImage('assets/images/background.webp');
+const AssetImage _village = AssetImage('assets/images/village.webp');
+const AssetImage _hill = AssetImage('assets/images/coline-herbe.webp');
+const AssetImage _mountain = AssetImage('assets/images/montagne.webp');
+const AssetImage _lake = AssetImage('assets/images/lac.webp');
+const AssetImage _cabin = AssetImage('assets/images/cabane.webp');
+const AssetImage _pines = AssetImage('assets/images/pins.webp');
+
+/// Every photo, in the order of the walk the copy tells.
+const List<AssetImage> _photos = <AssetImage>[
+  _village,
+  _hill,
+  _mountain,
+  _lake,
+  _cabin,
+  _pines,
+];
 
 const Color _ink = Color(0xFF14110F);
 const Color _card = Color(0xF7FCFAF8);
 const Color _dusk = Color(0xFF241C18);
 const Color _panel = Color(0xFFF7F4F1);
 const Color _muted = Color(0xFF6B635C);
+const Color _paper = Color(0xFFF6F1EA);
+const Color _white = Color(0xFFFFFDFB);
+const Color _accent = Color(0xFFD9692E);
 
 /// One entry of the scrolling content, the same copy the README previews use.
 class _Note {
-  const _Note(this.dot, this.title, this.detail);
+  const _Note(this.dot, this.title, this.detail, {this.photo});
 
   final Color dot;
   final String title;
   final String detail;
+
+  /// The thumbnail the note shows, or `null` for its dot alone.
+  final AssetImage? photo;
 }
 
 const List<_Note> _notes = <_Note>[
@@ -32,36 +54,43 @@ const List<_Note> _notes = <_Note>[
     Color(0xFF2F6FED),
     'Coastal ridge',
     'Eleven kilometres, four hours, no shade after the pass.',
+    photo: _village,
   ),
   _Note(
     Color(0xFFE0446B),
     'Trail notes',
     'Water at the refuge only. The upper section stays icy.',
+    photo: _hill,
   ),
   _Note(
     Color(0xFF2FA36B),
     'Gear list',
     'Poles, two litres, a shell. Leave the rope behind.',
+    photo: _mountain,
   ),
   _Note(
     Color(0xFFEBB53C),
     'Weather',
     'Clear until the afternoon, then wind from the south.',
+    photo: _lake,
   ),
   _Note(
     Color(0xFF7A5AF0),
     'Getting there',
     'Bus at 6.40 from the village, last one back at 19.10.',
+    photo: _cabin,
   ),
   _Note(
     Color(0xFFE8734A),
     'Permits',
     'None needed below the col. The reserve asks for one.',
+    photo: _pines,
   ),
   _Note(
     Color(0xFF3FB6C4),
     'Signal',
     'Patchy along the ridge, nothing at all in the valley.',
+    photo: _hill,
   ),
 ];
 
@@ -80,11 +109,8 @@ class ExampleApp extends StatelessWidget {
   /// The theme the example is drawn in, shared with the screenshot recorder so
   /// the two cannot drift apart.
   static ThemeData get theme => ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFE07A3F),
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: _dusk,
+        colorScheme: ColorScheme.fromSeed(seedColor: _accent),
+        scaffoldBackgroundColor: _paper,
         useMaterial3: true,
       );
 
@@ -139,134 +165,255 @@ class _Menu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
-          children: <Widget>[
-            const Text(
-              'Simple Parallax v2',
-              style: TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1,
+      body: SimpleParallaxWidget(
+        children: <Widget>[
+          const _MenuCover(),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 28, 20, 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: const <Widget>[
+                    _ReduceMotionSwitch(),
+                    _Section('Put together'),
+                    _Entry(
+                      label: 'A travel page',
+                      detail:
+                          'Every picture on it drifts, zooms, blurs or follows a row',
+                      photo: _mountain,
+                      demo: ShowcaseDemo(),
+                    ),
+                    _Section('Container mode'),
+                    _Entry(
+                      label: 'One background behind the page',
+                      detail: 'A scrolling column over a single drifting image',
+                      photo: _hill,
+                      demo: ContainerVerticalDemo(),
+                    ),
+                    _Entry(
+                      label: 'Sideways',
+                      detail: 'The same, drifting on the horizontal axis',
+                      photo: _lake,
+                      demo: ContainerHorizontalDemo(),
+                    ),
+                    _Entry(
+                      label: 'Slivers and a controller',
+                      detail:
+                          'A SliverAppBar over the background, and a way back up',
+                      photo: _pines,
+                      demo: ContainerSliversDemo(),
+                    ),
+                    _Entry(
+                      label: 'A gradient behind the page',
+                      detail: 'No image anywhere, just a widget',
+                      photo: null,
+                      demo: ContainerCustomDemo(),
+                    ),
+                    _Section('Item mode'),
+                    _Entry(
+                      label: 'Blocks that slide their own background',
+                      detail: 'Each block drifts as it crosses the screen',
+                      photo: _village,
+                      demo: ItemVerticalDemo(),
+                    ),
+                    _Entry(
+                      label: 'A carousel in a page',
+                      detail: 'Following the row, the page around it, or both',
+                      photo: _hill,
+                      demo: ItemCarouselDemo(),
+                    ),
+                    _Entry(
+                      label: 'Five hundred blocks',
+                      detail: 'Built one at a time as they scroll in',
+                      photo: _cabin,
+                      demo: ItemBuilderDemo(),
+                    ),
+                    _Entry(
+                      label: 'Widgets as the background',
+                      detail: 'A gradient, a tinted image and a video',
+                      photo: null,
+                      demo: ItemCustomDemo(),
+                    ),
+                    _Section('Effects'),
+                    _Entry(
+                      label: 'Zooming and blurring',
+                      detail: 'Each one run forwards, then backwards',
+                      photo: _mountain,
+                      demo: ItemZoomBlurDemo(),
+                    ),
+                    _Entry(
+                      label: 'Stopping at the middle',
+                      detail:
+                          'An effect that is done halfway, held or sent back',
+                      photo: _village,
+                      demo: ItemReachDemo(),
+                    ),
+                    _Entry(
+                      label: 'A tint over the image',
+                      detail: 'A fixed overlay, darkened, tinted or faded',
+                      photo: _cabin,
+                      demo: ItemOverlayDemo(),
+                    ),
+                    _Entry(
+                      label: 'Leaning with the pointer',
+                      detail: 'Move the mouse over it, or tilt the phone',
+                      photo: _lake,
+                      demo: TiltDemo(),
+                    ),
+                    _Entry(
+                      label: 'Everything at once',
+                      detail:
+                          'One carousel, every effect on its blocks, leaning',
+                      photo: _pines,
+                      demo: EverythingDemo(),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Two modes, either axis, any image or any widget as the '
-              'background. The drift, the zoom, the blur and the overlay are '
-              'each set on their own.',
-              style: TextStyle(fontSize: 15, color: Color(0x99FFFFFF)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The top of the menu: the package's name over a photo that drifts as the
+/// menu scrolls, the first parallax block of the app.
+class _MenuCover extends StatelessWidget {
+  const _MenuCover();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool wide = MediaQuery.sizeOf(context).width >= 760;
+    return SimpleParallaxItem(
+      image: _mountain,
+      height: wide ? 360 : 300,
+      alignment: const Alignment(0, -0.2),
+      parallax: const ParallaxProperties(overscan: 1.6),
+      overlay: const OverlayProperties.gradient(
+        LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[Color(0x1A000000), Color(0xB3000000)],
+        ),
+      ),
+      child: SafeArea(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text(
+                    'FLUTTER · PURE DART',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 3,
+                      color: Color(0xFFFFC79E),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Simple Parallax',
+                    style: TextStyle(
+                      fontSize: wide ? 52 : 40,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.6,
+                      height: 1.05,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Two modes, either axis, any image or any widget as the '
+                    'background. The drift, the zoom, the blur, the overlay '
+                    'and the tilt are each set on their own.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: Color(0xE6FFFFFF),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
-            const _ReduceMotionSwitch(),
-            const _Section('Container mode'),
-            _entry(
-              context,
-              'One background behind the page',
-              'A scrolling column over a single drifting image',
-              const ContainerVerticalDemo(),
-            ),
-            _entry(
-              context,
-              'Sideways',
-              'The same, drifting on the horizontal axis',
-              const ContainerHorizontalDemo(),
-            ),
-            _entry(
-              context,
-              'Slivers and a controller',
-              'A SliverAppBar over the background, and a way back up',
-              const ContainerSliversDemo(),
-            ),
-            _entry(
-              context,
-              'A gradient behind the page',
-              'No image anywhere, just a widget',
-              const ContainerCustomDemo(),
-            ),
-            const _Section('Item mode'),
-            _entry(
-              context,
-              'Blocks that slide their own background',
-              'Each block drifts as it crosses the screen',
-              const ItemVerticalDemo(),
-            ),
-            _entry(
-              context,
-              'A carousel in a page',
-              'Following the row, the page around it, or both',
-              const ItemCarouselDemo(),
-            ),
-            _entry(
-              context,
-              'Five hundred blocks',
-              'Built one at a time as they scroll in',
-              const ItemBuilderDemo(),
-            ),
-            _entry(
-              context,
-              'Widgets as the background',
-              'A gradient, a tinted image and a video',
-              const ItemCustomDemo(),
-            ),
-            const _Section('Effects'),
-            _entry(
-              context,
-              'Zooming and blurring',
-              'Each one run forwards, then backwards',
-              const ItemZoomBlurDemo(),
-            ),
-            _entry(
-              context,
-              'Stopping at the middle',
-              'An effect that is done halfway, held or sent back',
-              const ItemReachDemo(),
-            ),
-            _entry(
-              context,
-              'A tint over the image',
-              'A fixed overlay, darkened, tinted or faded',
-              const ItemOverlayDemo(),
-            ),
-            _entry(
-              context,
-              'Leaning with the pointer',
-              'Move the mouse over it, or tilt the phone',
-              const TiltDemo(),
-            ),
-            _entry(
-              context,
-              'Everything at once',
-              'One carousel, every effect on its blocks, leaning',
-              const EverythingDemo(),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _entry(
-    BuildContext context,
-    String label,
-    String detail,
-    Widget demo,
-  ) {
+/// A menu entry: a thumbnail, what the screen shows, and the way in.
+class _Entry extends StatelessWidget {
+  const _Entry({
+    required this.label,
+    required this.detail,
+    required this.photo,
+    required this.demo,
+  });
+
+  final String label;
+  final String detail;
+
+  /// The thumbnail, or `null` for a gradient: the screens with no photo.
+  final AssetImage? photo;
+
+  final Widget demo;
+
+  @override
+  Widget build(BuildContext context) {
+    final AssetImage? photo = this.photo;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: const Color(0x14FFFFFF),
-        borderRadius: BorderRadius.circular(14),
+        color: _white,
+        borderRadius: BorderRadius.circular(16),
+        elevation: 2,
+        shadowColor: const Color(0x403B2A1A),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (BuildContext context) => demo),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.all(10),
             child: Row(
               children: <Widget>[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: photo == null
+                        ? const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: <Color>[
+                                  Color(0xFF1B1464),
+                                  Color(0xFFB4436C),
+                                  Color(0xFFFFB25B),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Image(
+                            image: ResizeImage(photo, width: 192),
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,20 +423,21 @@ class _Menu extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          color: _ink,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         detail,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0x99FFFFFF),
-                        ),
+                        style: const TextStyle(fontSize: 13, color: _muted),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Color(0x66FFFFFF)),
+                const Padding(
+                  padding: EdgeInsets.only(right: 6),
+                  child: Icon(Icons.chevron_right, color: _accent),
+                ),
               ],
             ),
           ),
@@ -313,9 +461,9 @@ class _Section extends StatelessWidget {
         label.toUpperCase(),
         style: const TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           letterSpacing: 2.4,
-          color: Color(0x99FFFFFF),
+          color: _accent,
         ),
       ),
     );
@@ -329,8 +477,10 @@ class _ReduceMotionSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0x14FFFFFF),
+      color: _white,
       borderRadius: BorderRadius.circular(14),
+      elevation: 2,
+      shadowColor: const Color(0x403B2A1A),
       clipBehavior: Clip.antiAlias,
       child: ValueListenableBuilder<bool>(
         valueListenable: _reduceMotion,
@@ -346,7 +496,7 @@ class _ReduceMotionSwitch extends StatelessWidget {
           subtitle: const Text(
             'What the demos look like with the system setting on: the '
             'backgrounds hold still and the wheel lands in one step.',
-            style: TextStyle(fontSize: 13, color: Color(0x99FFFFFF)),
+            style: TextStyle(fontSize: 13, color: _muted),
           ),
         ),
       ),
@@ -360,12 +510,13 @@ class _Screen extends StatelessWidget {
 
   final Widget child;
 
-  /// The page under the demo, or `null` for the app's dark one.
+  /// The page under the demo, or `null` for the app's own.
   ///
   /// The item screens stack blocks of prose on [_panel] between the parallax
   /// blocks, and give the page that colour too. The smooth wheel stops the view
   /// on fractions of a pixel, where the edge of a block is blended with what is
-  /// under it: on the dark page that shows as a grey line along every seam.
+  /// under it: on a page of another colour that shows as a line along every
+  /// seam.
   final Color? color;
 
   @override
@@ -407,13 +558,62 @@ class _Screen extends StatelessWidget {
 /// so it has already spent part of its drift and its zoom. A screenful in front
 /// of it is what lets the whole range be seen.
 class _Screenful extends StatelessWidget {
-  const _Screenful({required this.child});
+  const _Screenful({required this.child}) : _more = true;
+
+  /// The last screenful of a page, with nothing below to scroll to.
+  const _Screenful.end({required this.child}) : _more = false;
 
   final Widget child;
 
+  /// Whether a block follows, which the screen asks to scroll to.
+  final bool _more;
+
   @override
-  Widget build(BuildContext context) =>
-      SizedBox(height: MediaQuery.sizeOf(context).height, child: child);
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height,
+      child: _Large(
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            child,
+            if (_more)
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 28,
+                child: Column(
+                  children: <Widget>[
+                    Text(
+                      'SCROLL',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 3,
+                        color: _accent,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Icon(Icons.keyboard_arrow_down, color: _accent),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sets the prose below it in large type: a screenful has the room.
+class _Large extends InheritedWidget {
+  const _Large({required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_Large>() != null;
+
+  @override
+  bool updateShouldNotify(_Large oldWidget) => false;
 }
 
 /// A note as a row, inset so the background shows around it.
@@ -424,33 +624,48 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AssetImage? photo = note.photo;
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
+        constraints: const BoxConstraints(maxWidth: 580),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 7),
-          padding: const EdgeInsets.fromLTRB(22, 17, 22, 17),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: _card,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: const <BoxShadow>[
               BoxShadow(
                 color: Color(0x33000000),
-                blurRadius: 18,
-                offset: Offset(0, 6),
+                blurRadius: 22,
+                offset: Offset(0, 8),
               ),
             ],
           ),
           child: Row(
             children: <Widget>[
-              Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: note.dot,
-                  shape: BoxShape.circle,
+              if (photo == null)
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: note.dot,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                )
+              else
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: Image(
+                    image: ResizeImage(photo, width: 168),
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -460,7 +675,7 @@ class _Row extends StatelessWidget {
                       note.title,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
                         color: _ink,
                       ),
@@ -468,11 +683,16 @@ class _Row extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       note.detail,
-                      style: const TextStyle(fontSize: 13, color: _muted),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: _muted,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
             ],
           ),
         ),
@@ -489,48 +709,62 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AssetImage? photo = note.photo;
     return Center(
       child: Container(
-        width: 210,
-        height: 280,
+        width: 230,
+        height: 310,
         margin: const EdgeInsets.symmetric(horizontal: 10),
-        padding: const EdgeInsets.all(22),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: _card,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: const <BoxShadow>[
             BoxShadow(
               color: Color(0x33000000),
-              blurRadius: 18,
-              offset: Offset(0, 6),
+              blurRadius: 22,
+              offset: Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                color: note.dot,
-                shape: BoxShape.circle,
-              ),
+            SizedBox(
+              height: 140,
+              width: double.infinity,
+              child: photo == null
+                  ? ColoredBox(color: note.dot)
+                  : Image(
+                      image: ResizeImage(photo, width: 460),
+                      fit: BoxFit.cover,
+                    ),
             ),
-            const Spacer(),
-            Text(
-              note.title,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
-                color: _ink,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    note.title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                      color: _ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    note.detail,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: _muted,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              note.detail,
-              style: const TextStyle(fontSize: 13, height: 1.45, color: _muted),
             ),
           ],
         ),
@@ -601,31 +835,36 @@ class _Prose extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool wide = MediaQuery.sizeOf(context).width >= 760;
+    final bool large = _Large.of(context);
     return ColoredBox(
       color: _panel,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+          constraints: BoxConstraints(maxWidth: large ? 720 : 640),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                Container(width: 32, height: 3, color: _accent),
+                const SizedBox(height: 14),
                 Text(
                   heading,
-                  style: const TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.4,
+                  style: TextStyle(
+                    fontSize: large ? (wide ? 44 : 32) : (wide ? 30 : 24),
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: large ? -1.4 : -0.8,
                     color: _ink,
                   ),
                 ),
-                const SizedBox(height: 9),
+                const SizedBox(height: 10),
                 Text(
                   body,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: large ? (wide ? 19 : 17) : (wide ? 16 : 15),
                     height: 1.6,
                     color: _muted,
                   ),
@@ -651,7 +890,7 @@ class ContainerVerticalDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Screen(
       child: SimpleParallaxContainer(
-        image: _background,
+        image: _hill,
         parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
@@ -679,7 +918,7 @@ class ContainerHorizontalDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Screen(
       child: SimpleParallaxContainer(
-        image: _background,
+        image: _lake,
         scrollDirection: Axis.horizontal,
         parallax: const ParallaxProperties(overscan: 2),
         child: Padding(
@@ -738,12 +977,14 @@ class _ContainerSliversDemoState extends State<ContainerSliversDemo> {
   Widget build(BuildContext context) {
     return _Screen(
       child: SimpleParallaxContainer.slivers(
-        image: _background,
+        image: _pines,
         controller: _controller,
         parallax: const ParallaxProperties(overscan: 2),
         slivers: <Widget>[
           SliverAppBar(
             title: const Text('Slivers'),
+            // Clear of the way back, which floats over the screen.
+            titleSpacing: 76,
             backgroundColor: const Color(0x66000000),
             foregroundColor: const Color(0xFFFFFFFF),
             floating: true,
@@ -790,10 +1031,10 @@ class ItemVerticalDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _village,
             height: 430,
             parallax: ParallaxProperties(overscan: 2),
-            child: _Caption('DAY ONE', 'The southern pass'),
+            child: _Caption('DAY ONE', 'Out of the village'),
           ),
           SizedBox(
             height: 230,
@@ -804,7 +1045,7 @@ class ItemVerticalDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _lake,
             height: 430,
             parallax: ParallaxProperties(speed: 0.4, overscan: 2),
             child: _Caption('DAY TWO', 'Down to the lake'),
@@ -891,11 +1132,12 @@ class _Carousel extends StatelessWidget {
   final Axis? scrollAxis;
   final ParallaxProperties? crossParallax;
 
-  static const List<(String, String)> _days = <(String, String)>[
-    ('DAY ONE', 'The southern pass'),
-    ('DAY TWO', 'Down to the lake'),
-    ('DAY THREE', 'The long ridge'),
-    ('DAY FOUR', 'Back to the village'),
+  static const List<(String, String, AssetImage)> _days =
+      <(String, String, AssetImage)>[
+    ('DAY ONE', 'Out of the village', _village),
+    ('DAY TWO', 'Along the ridge', _hill),
+    ('DAY THREE', 'Over the pass', _mountain),
+    ('DAY FOUR', 'Down to the lake', _lake),
   ];
 
   @override
@@ -909,7 +1151,7 @@ class _Carousel extends StatelessWidget {
         separatorBuilder: (BuildContext context, int index) =>
             const SizedBox(width: 14),
         itemBuilder: (BuildContext context, int index) => SimpleParallaxItem(
-          image: _background,
+          image: _days[index].$3,
           width: 300,
           borderRadius: BorderRadius.circular(18),
           parallax: const ParallaxProperties(overscan: 1.8),
@@ -948,7 +1190,7 @@ class ItemBuilderDemo extends StatelessWidget {
             );
           }
           return SimpleParallaxItem(
-            image: _background,
+            image: _photos[(index ~/ 2) % _photos.length],
             height: 320,
             parallax: ParallaxProperties(
               speed: index % 4 == 0 ? 1 : 0.5,
@@ -994,7 +1236,7 @@ class ItemZoomBlurDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _mountain,
             height: 620,
             parallax: ParallaxProperties(speed: 0, overscan: 1.6),
             zoom: ZoomProperties(0.9),
@@ -1009,7 +1251,7 @@ class ItemZoomBlurDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _lake,
             height: 620,
             parallax: ParallaxProperties(speed: 0, overscan: 1.6),
             zoom: ZoomProperties(-0.9),
@@ -1024,7 +1266,7 @@ class ItemZoomBlurDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _hill,
             height: 620,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             blur: BlurProperties(16),
@@ -1037,13 +1279,13 @@ class ItemZoomBlurDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _cabin,
             height: 620,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             blur: BlurProperties(-16),
             child: _Caption('BLUR -16', 'It sharpens'),
           ),
-          _Screenful(
+          _Screenful.end(
             child: _Prose(
               'Only the background moves through it',
               'The filter sits under the block content, so a caption, a button '
@@ -1081,7 +1323,7 @@ class ItemReachDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _village,
             height: 620,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             zoom: ZoomProperties(0.6, reach: 0.5),
@@ -1095,7 +1337,7 @@ class ItemReachDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _mountain,
             height: 620,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             zoom: ZoomProperties(0.6, reach: 0.5, back: true),
@@ -1109,13 +1351,13 @@ class ItemReachDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _lake,
             height: 620,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             blur: BlurProperties(-16, reach: 0.5, back: true),
             child: _Caption('BLUR -16, BACK', 'Sharp in passing'),
           ),
-          _Screenful(
+          _Screenful.end(
             child: _Prose(
               'The drift is left alone',
               'Only the zoom and the blur are shaped. A background that walked '
@@ -1153,7 +1395,7 @@ class ItemOverlayDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _cabin,
             height: 520,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             overlay: OverlayProperties.darken(0.45),
@@ -1168,7 +1410,7 @@ class ItemOverlayDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _hill,
             height: 520,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             overlay: OverlayProperties.gradient(
@@ -1189,13 +1431,13 @@ class ItemOverlayDemo extends StatelessWidget {
             ),
           ),
           SimpleParallaxItem(
-            image: _background,
+            image: _mountain,
             height: 520,
             parallax: ParallaxProperties(speed: 0.5, overscan: 1.6),
             overlay: OverlayProperties(Color(0xFF1A237E), opacity: 0.5),
             child: _Caption('COLOUR', 'Indigo at a half'),
           ),
-          _Screenful(
+          _Screenful.end(
             child: _Prose(
               'It does not move',
               'The background drifts under the overlay while the overlay stays '
@@ -1323,7 +1565,7 @@ class _TiltDemoState extends State<TiltDemo>
       child: PointerTilt(
         controller: tilt,
         child: SimpleParallaxContainer(
-          image: _background,
+          image: _mountain,
           parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
           tilt: TiltProperties(tilt, distance: 28),
           child: Padding(
@@ -1353,7 +1595,8 @@ class _TiltDemoState extends State<TiltDemo>
 class _Combo {
   const _Combo(
     this.label,
-    this.title, {
+    this.title,
+    this.photo, {
     this.parallax = const ParallaxProperties(overscan: 1.8),
     this.cross,
     this.lean,
@@ -1364,6 +1607,7 @@ class _Combo {
 
   final String label;
   final String title;
+  final AssetImage photo;
   final ParallaxProperties parallax;
 
   /// The drift with the page, across the row.
@@ -1382,6 +1626,7 @@ const List<_Combo> _combos = <_Combo>[
   _Combo(
     'ALL · LEAN 20 · BLUR -6',
     'In focus by the middle',
+    _village,
     parallax: ParallaxProperties(overscan: 1.8),
     cross: ParallaxProperties(speed: 0.5),
     lean: 20,
@@ -1398,6 +1643,7 @@ const List<_Combo> _combos = <_Combo>[
   _Combo(
     'ALL · LEAN 12 · BLUR -3',
     'The same, gently',
+    _hill,
     parallax: ParallaxProperties(speed: 0.5, overscan: 1.8),
     cross: ParallaxProperties(speed: 0.3),
     lean: 12,
@@ -1414,6 +1660,7 @@ const List<_Combo> _combos = <_Combo>[
   _Combo(
     'ALL · SENT BACK · BLUR -8',
     'Sharp in passing',
+    _mountain,
     parallax: ParallaxProperties(speed: 0.8, overscan: 1.8),
     cross: ParallaxProperties(speed: 0.6),
     lean: 24,
@@ -1428,6 +1675,7 @@ const List<_Combo> _combos = <_Combo>[
   _Combo(
     'ALL · LEAN 36 · REACH 0.3',
     'Sharp well before the middle',
+    _lake,
     parallax: ParallaxProperties(overscan: 2),
     cross: ParallaxProperties(speed: 0.9),
     lean: 36,
@@ -1443,6 +1691,7 @@ const List<_Combo> _combos = <_Combo>[
   _Combo(
     'BOTH AXES · LEAN 24',
     'No zoom, no blur',
+    _cabin,
     parallax: ParallaxProperties(speed: 0.8, overscan: 1.8),
     cross: ParallaxProperties(speed: 0.8),
     lean: 24,
@@ -1454,7 +1703,7 @@ const List<_Combo> _combos = <_Combo>[
       ),
     ),
   ),
-  _Combo('THE ROW ONLY', 'For comparison'),
+  _Combo('THE ROW ONLY', 'For comparison', _pines),
 ];
 
 /// Every effect at once, on the blocks of one carousel.
@@ -1508,7 +1757,7 @@ class _EverythingDemoState extends State<EverythingDemo>
                   final _Combo combo = _combos[index];
                   final double? lean = combo.lean;
                   return SimpleParallaxItem(
-                    image: _background,
+                    image: combo.photo,
                     width: 280,
                     borderRadius: BorderRadius.circular(18),
                     parallax: combo.parallax,
@@ -1524,7 +1773,7 @@ class _EverythingDemoState extends State<EverythingDemo>
                 },
               ),
             ),
-            const _Screenful(
+            const _Screenful.end(
               child: _Prose(
                 'Drag the row, scroll the page, tilt the phone',
                 'Dragging the row slides the backgrounds sideways and brings '
@@ -1636,7 +1885,7 @@ class ItemCustomDemo extends StatelessWidget {
                 Color(0x99311B92),
                 BlendMode.srcATop,
               ),
-              child: Image(image: _background, fit: BoxFit.cover),
+              child: Image(image: _lake, fit: BoxFit.cover),
             ),
             child: _Caption('A TINTED IMAGE', 'Down to the lake'),
           ),

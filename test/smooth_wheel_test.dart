@@ -7,6 +7,39 @@ import 'helpers.dart';
 
 void main() {
   group('the smooth wheel', () {
+    testWidgets('brings a floating app bar back on a notch up', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        app(
+          SimpleParallaxContainer.slivers(
+            background: testLayer,
+            smooth: true,
+            slivers: <Widget>[
+              const SliverAppBar(floating: true, title: Text('Bar')),
+              SliverList.builder(
+                itemCount: 40,
+                itemBuilder: (BuildContext context, int i) =>
+                    SizedBox(height: 100, child: Text('Item $i')),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      for (int i = 0; i < 5; i++) {
+        await sendWheel(tester, const Offset(0, 120));
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('Bar').hitTestable(), findsNothing);
+
+      await sendWheel(tester, const Offset(0, -120));
+      await tester.pumpAndSettle();
+
+      expect(scrollPosition(tester).pixels, 480);
+      expect(find.text('Bar').hitTestable(), findsOneWidget);
+    });
+
     testWidgets('eases a notch in instead of landing it at once', (
       WidgetTester tester,
     ) async {

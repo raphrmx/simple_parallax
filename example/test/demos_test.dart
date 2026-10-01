@@ -5,6 +5,7 @@ import 'package:simple_parallax_example/main.dart';
 
 /// Every screen the menu opens, in the order it lists them.
 const List<String> _entries = <String>[
+  'A travel page',
   'One background behind the page',
   'Sideways',
   'Slivers and a controller',

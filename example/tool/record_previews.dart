@@ -19,6 +19,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_parallax/simple_parallax.dart';
+import 'package:simple_parallax_example/main.dart';
+import 'package:simple_parallax_example/showcase.dart';
 
 /// Logical size of a preview, and the size the WebP ends up at.
 const Size _size = Size(520, 260);
@@ -38,7 +40,10 @@ const List<String> _fontCandidates = <String>[
   '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
 ];
 
-const AssetImage _photo = AssetImage('assets/images/background.webp');
+const AssetImage _village = AssetImage('assets/images/village.webp');
+const AssetImage _hill = AssetImage('assets/images/coline-herbe.webp');
+const AssetImage _mountain = AssetImage('assets/images/montagne.webp');
+const AssetImage _lake = AssetImage('assets/images/lac.webp');
 const Key _shot = Key('shot');
 
 const Color _ink = Color(0xFF14110F);
@@ -263,9 +268,18 @@ const Widget _gradient = DecoratedBox(
 
 /// One preview: a name, the widget to render, and how far it scrolls.
 class _Preview {
-  const _Preview(this.name, this.build, {this.drive, this.frames = _frames});
+  const _Preview(
+    this.name,
+    this.build, {
+    this.drive,
+    this.frames = _frames,
+    this.size = _size,
+  });
 
   final String name;
+
+  /// Logical size of this preview.
+  final Size size;
   final Widget Function(ScrollController controller) build;
 
   /// Moves the scrollables on screen, outermost first, to where they stand at
@@ -293,18 +307,36 @@ double _thereAndBack(double t, [double phase = 0]) =>
     (1 - math.cos(2 * math.pi * (t + phase))) / 2;
 
 /// The days on the cards of the carousel preview.
-const List<(String, String)> _days = <(String, String)>[
-  ('DAY ONE', 'The pass'),
-  ('DAY TWO', 'The lake'),
-  ('DAY THREE', 'The ridge'),
-  ('DAY FOUR', 'The village'),
+const List<(String, String, AssetImage)> _days = <(String, String, AssetImage)>[
+  ('DAY ONE', 'The village', _village),
+  ('DAY TWO', 'The ridge', _hill),
+  ('DAY THREE', 'The pass', _mountain),
+  ('DAY FOUR', 'The lake', _lake),
 ];
 
 final List<_Preview> _previews = <_Preview>[
+  // The example's travel page, from its cover to its day photos and back.
+  _Preview(
+    'travel_page',
+    (ScrollController c) => Theme(
+      data: ExampleApp.theme.copyWith(
+        textTheme: ExampleApp.theme.textTheme.apply(fontFamily: _fontFamily),
+      ),
+      child: const ShowcaseDemo(),
+    ),
+    size: Size(640, 400),
+    frames: 150,
+    drive: (List<ScrollPosition> positions, double t) {
+      final ScrollPosition page = positions[0];
+      page.jumpTo(
+        (2000 * _thereAndBack(t)).clamp(0.0, page.maxScrollExtent),
+      );
+    },
+  ),
   _Preview(
     'container_mode',
     (ScrollController c) => SimpleParallaxContainer(
-      image: _photo,
+      image: _hill,
       parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
       child: Column(
         children: <Widget>[
@@ -318,7 +350,7 @@ final List<_Preview> _previews = <_Preview>[
   _Preview(
     'container_mode_horizontal',
     (ScrollController c) => SimpleParallaxContainer(
-      image: _photo,
+      image: _lake,
       scrollDirection: Axis.horizontal,
       parallax: const ParallaxProperties(speed: 0.8, overscan: 1.6),
       child: Row(
@@ -342,10 +374,10 @@ final List<_Preview> _previews = <_Preview>[
           height: 132,
         ),
         SimpleParallaxItem(
-          image: _photo,
+          image: _village,
           height: 210,
           parallax: ParallaxProperties(overscan: 2),
-          child: _caption('DAY ONE', 'The southern pass'),
+          child: _caption('DAY ONE', 'Out of the village'),
         ),
         _prose(
           'Where to stop',
@@ -354,7 +386,7 @@ final List<_Preview> _previews = <_Preview>[
           height: 132,
         ),
         SimpleParallaxItem(
-          image: _photo,
+          image: _lake,
           height: 210,
           parallax: ParallaxProperties(speed: 0.45, overscan: 2),
           child: _caption('DAY TWO', 'Down to the lake'),
@@ -380,10 +412,10 @@ final List<_Preview> _previews = <_Preview>[
           width: 260,
         ),
         SimpleParallaxItem(
-          image: _photo,
+          image: _mountain,
           width: 300,
           parallax: ParallaxProperties(overscan: 2),
-          child: _caption('DAY ONE', 'The southern pass'),
+          child: _caption('DAY ONE', 'Over the pass'),
         ),
         _prose(
           'Where to stop',
@@ -391,7 +423,7 @@ final List<_Preview> _previews = <_Preview>[
           width: 260,
         ),
         SimpleParallaxItem(
-          image: _photo,
+          image: _lake,
           width: 300,
           parallax: ParallaxProperties(speed: 0.45, overscan: 2),
           child: _caption('DAY TWO', 'Down to the lake'),
@@ -441,7 +473,7 @@ final List<_Preview> _previews = <_Preview>[
                   const SizedBox(width: 12),
               itemBuilder: (BuildContext context, int index) =>
                   SimpleParallaxItem(
-                image: _photo,
+                image: _days[index].$3,
                 width: 210,
                 borderRadius: BorderRadius.circular(14),
                 parallax: const ParallaxProperties(overscan: 1.8),
@@ -467,6 +499,23 @@ final List<_Preview> _previews = <_Preview>[
     frames: 100,
   ),
 ];
+
+/// Registers the icon font, which a test does not get on its own: without it
+/// every icon draws as an empty box.
+Future<void> _loadIcons() async {
+  final String? flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  if (flutterRoot == null) {
+    throw StateError('FLUTTER_ROOT is not set, cannot find the icon font');
+  }
+  final File file = File(
+    '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+  );
+  final FontLoader loader = FontLoader('MaterialIcons');
+  loader.addFont(
+    Future<ByteData>.value(ByteData.view(file.readAsBytesSync().buffer)),
+  );
+  await loader.load();
+}
 
 Future<void> _loadFont() async {
   for (final String path in _fontCandidates) {
@@ -513,11 +562,12 @@ void main() {
     'render the previews',
     (WidgetTester tester) async {
       await _loadFont();
-      await tester.binding.setSurfaceSize(_size);
+      await _loadIcons();
       tester.view.devicePixelRatio = _scale;
-      tester.view.physicalSize = _size * _scale;
 
       for (final _Preview preview in _previews) {
+        await tester.binding.setSurfaceSize(preview.size);
+        tester.view.physicalSize = preview.size * _scale;
         final ScrollController controller = ScrollController();
         await tester.pumpWidget(
           MaterialApp(

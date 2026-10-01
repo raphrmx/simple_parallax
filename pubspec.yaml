@@ -3,12 +3,16 @@ description: >-
   Parallax widgets for Flutter, in pure Dart with no dependencies. A container
   mode and a per-item mode, either axis, with a drift, a zoom, a blur and an
   overlay set on their own.
-version: 2.4.0
+version: 2.4.1
 homepage: https://packages.comapps.be/simple_parallax/
 repository: https://github.com/raphrmx/simple_parallax
 issue_tracker: https://github.com/raphrmx/simple_parallax/issues
 
 screenshots:
+  - description: Parallax backgrounds for Flutter, in pure Dart with no dependencies.
+    path: screenshots/cover.webp
+  - description: A travel page whose every picture drifts, zooms, blurs or follows a row.
+    path: screenshots/travel_page.webp
   - description: Container mode, one background image drifting behind a scrolling column.
     path: screenshots/container_mode.webp
   - description: Item mode, where each block slides its own background as it crosses the viewport.
